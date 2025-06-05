@@ -1,0 +1,49 @@
+# Node.js
+node_modules/
+npm-debug.log*
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+backend/*/.env
+frontend/.env.local
+
+# Build output
+dist/
+build/
+.next/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+backend/*/logs/
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+.cache/
+.eslintcache
+
+# Uploads
+uploads/
+temp/
+*.tmp
+
+# Keep examples
+!.env.example
+!backend/*/.env.example

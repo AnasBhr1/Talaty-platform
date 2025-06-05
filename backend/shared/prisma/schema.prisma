@@ -1,0 +1,223 @@
+// backend/shared/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  password           String
+  firstName          String
+  lastName           String
+  phone              String?
+  businessName       String?
+  businessType       String?
+  registrationNumber String?
+  address            String?
+  city               String?
+  country            String?
+  eKycStatus         EKycStatus @default(PENDING)
+  isVerified         Boolean   @default(false)
+  score              Int?
+  lastLoginAt        DateTime?
+  emailVerifiedAt    DateTime?
+  phoneVerifiedAt    DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relations
+  documents       Document[]
+  refreshTokens   RefreshToken[]
+  otpVerifications OtpVerification[]
+  scoreHistories  ScoreHistory[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model OtpVerification {
+  id        String      @id @default(cuid())
+  userId    String
+  code      String
+  type      OtpType
+  purpose   OtpPurpose
+  expiresAt DateTime
+  isUsed    Boolean     @default(false)
+  attempts  Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otp_verifications")
+}
+
+model Document {
+  id           String         @id @default(cuid())
+  userId       String
+  fileName     String
+  originalName String
+  mimeType     String
+  size         Int
+  s3Key        String         @unique
+  s3Url        String
+  documentType DocumentType
+  status       DocumentStatus @default(UPLOADED)
+  uploadedAt   DateTime       @default(now())
+  verifiedAt   DateTime?
+  rejectedAt   DateTime?
+  rejectionReason String?
+  metadata     Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model ScoreHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  totalScore    Int
+  personalInfo  Int
+  businessInfo  Int
+  documents     Int
+  verification  Int
+  factors       String[]
+  recommendations String[]
+  calculatedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("score_histories")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  channel     NotificationChannel
+  recipient   String
+  subject     String?
+  message     String
+  templateId  String?
+  data        Json?
+  status      NotificationStatus @default(PENDING)
+  sentAt      DateTime?
+  failedAt    DateTime?
+  errorMessage String?
+  createdAt   DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  resource  String
+  resourceId String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+// Settings for system configuration
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string")
+  description String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// Enums
+enum EKycStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum DocumentType {
+  ID_CARD
+  BUSINESS_LICENSE
+  TAX_CERTIFICATE
+  BANK_STATEMENT
+  UTILITY_BILL
+  OTHER
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  VERIFIED
+  REJECTED
+}
+
+enum OtpType {
+  EMAIL
+  SMS
+}
+
+enum OtpPurpose {
+  EMAIL_VERIFICATION
+  PHONE_VERIFICATION
+  PASSWORD_RESET
+  LOGIN_VERIFICATION
+}
+
+enum NotificationType {
+  WELCOME
+  EMAIL_VERIFICATION
+  PHONE_VERIFICATION
+  DOCUMENT_UPLOADED
+  DOCUMENT_VERIFIED
+  DOCUMENT_REJECTED
+  SCORE_UPDATED
+  EKYC_COMPLETED
+  PASSWORD_RESET
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}

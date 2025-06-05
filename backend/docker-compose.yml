@@ -1,0 +1,279 @@
+# backend/docker-compose.yml
+
+version: '3.8'
+
+services:
+  # Database Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: talaty-postgres
+    environment:
+      POSTGRES_USER: talaty_user
+      POSTGRES_PASSWORD: talaty_password
+      POSTGRES_DB: talaty_main
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - talaty-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talaty_user -d talaty_main"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: talaty-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - talaty-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass talaty_redis_password
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Microservices
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: talaty-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_auth?schema=public
+      - REDIS_URL=redis://talaty_redis_password@redis:6379
+    volumes:
+      - ./auth-service:/app
+      - /app/node_modules
+      - ./shared:/app/shared
+    networks:
+      - talaty-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: talaty-user-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_user?schema=public
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    volumes:
+      - ./user-service:/app
+      - /app/node_modules
+      - ./shared:/app/shared
+    networks:
+      - talaty-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  document-service:
+    build:
+      context: ./document-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: talaty-document-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_document?schema=public
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - USER_SERVICE_URL=http://user-service:3002
+    volumes:
+      - ./document-service:/app
+      - /app/node_modules
+      - ./shared:/app/shared
+    networks:
+      - talaty-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  scoring-service:
+    build:
+      context: ./scoring-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: talaty-scoring-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_scoring?schema=public
+      - USER_SERVICE_URL=http://user-service:3002
+      - DOCUMENT_SERVICE_URL=http://document-service:3003
+    volumes:
+      - ./scoring-service:/app
+      - /app/node_modules
+      - ./shared:/app/shared
+    networks:
+      - talaty-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      document-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: talaty-notification-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_notification?schema=public
+      - REDIS_URL=redis://talaty_redis_password@redis:6379
+    volumes:
+      - ./notification-service:/app
+      - /app/node_modules
+      - ./shared:/app/shared
+    networks:
+      - talaty-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway (Nginx)
+  api-gateway:
+    image: nginx:alpine
+    container_name: talaty-api-gateway
+    ports:
+      - "8080:80"
+    volumes:
+      - ./api-gateway/nginx.conf:/etc/nginx/nginx.conf
+      - ./api-gateway/logs:/var/log/nginx
+    networks:
+      - talaty-network
+    depends_on:
+      - auth-service
+      - user-service
+      - document-service
+      - scoring-service
+      - notification-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring and Observability
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: talaty-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - talaty-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: talaty-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - talaty-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  talaty-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
