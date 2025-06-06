@@ -1,5 +1,3 @@
-// backend/user-service/src/validation/user.validation.ts
-
 import Joi from 'joi';
 
 // Phone validation regex: international format
