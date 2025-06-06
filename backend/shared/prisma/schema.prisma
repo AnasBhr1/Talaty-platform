@@ -1,4 +1,5 @@
-// backend/shared/prisma/schema.prisma
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -17,17 +18,21 @@ model User {
   lastName           String
   phone              String?
   businessName       String?
-  businessType       String?
+  businessType       BusinessType?
   registrationNumber String?
   address            String?
   city               String?
+  state              String?
   country            String?
+  postalCode         String?
   eKycStatus         EKycStatus @default(PENDING)
   isVerified         Boolean   @default(false)
+  isActive           Boolean   @default(true)
   score              Int?
   lastLoginAt        DateTime?
   emailVerifiedAt    DateTime?
   phoneVerifiedAt    DateTime?
+  passwordResetAt    DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -38,8 +43,29 @@ model User {
   scoreHistories  ScoreHistory[]
   notifications   Notification[]
   auditLogs       AuditLog[]
+  sessions        UserSession[]
 
   @@map("users")
+  @@index([email])
+  @@index([eKycStatus])
+  @@index([isActive])
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String   @unique
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+  @@index([userId])
+  @@index([sessionId])
 }
 
 model RefreshToken {
@@ -49,10 +75,13 @@ model RefreshToken {
   expiresAt DateTime
   isRevoked Boolean  @default(false)
   createdAt DateTime @default(now())
+  revokedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+  @@index([userId])
+  @@index([token])
 }
 
 model OtpVerification {
@@ -69,6 +98,8 @@ model OtpVerification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("otp_verifications")
+  @@index([userId])
+  @@index([code])
 }
 
 model Document {
@@ -83,14 +114,21 @@ model Document {
   documentType DocumentType
   status       DocumentStatus @default(UPLOADED)
   uploadedAt   DateTime       @default(now())
+  processedAt  DateTime?
   verifiedAt   DateTime?
   rejectedAt   DateTime?
   rejectionReason String?
   metadata     Json?
+  checksum     String?
+  version      Int           @default(1)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("documents")
+  @@index([userId])
+  @@index([documentType])
+  @@index([status])
+  @@index([s3Key])
 }
 
 model ScoreHistory {
@@ -108,6 +146,8 @@ model ScoreHistory {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("score_histories")
+  @@index([userId])
+  @@index([calculatedAt])
 }
 
 model Notification {
@@ -122,13 +162,18 @@ model Notification {
   data        Json?
   status      NotificationStatus @default(PENDING)
   sentAt      DateTime?
+  deliveredAt DateTime?
   failedAt    DateTime?
   errorMessage String?
-  createdAt   DateTime         @default(now())
+  retryCount  Int             @default(0)
+  createdAt   DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+  @@index([userId])
+  @@index([status])
+  @@index([type])
 }
 
 model AuditLog {
@@ -145,6 +190,10 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
 }
 
 // Settings for system configuration
@@ -159,22 +208,41 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
 
   @@map("system_settings")
+  @@index([key])
+  @@index([isActive])
 }
 
 // Enums
+enum BusinessType {
+  SOLE_PROPRIETORSHIP
+  PARTNERSHIP
+  CORPORATION
+  LLC
+  NONPROFIT
+  COOPERATIVE
+  OTHER
+}
+
 enum EKycStatus {
   PENDING
   IN_PROGRESS
+  UNDER_REVIEW
   COMPLETED
   REJECTED
+  SUSPENDED
 }
 
 enum DocumentType {
   ID_CARD
+  PASSPORT
+  DRIVERS_LICENSE
   BUSINESS_LICENSE
   TAX_CERTIFICATE
   BANK_STATEMENT
   UTILITY_BILL
+  PROOF_OF_ADDRESS
+  REGISTRATION_CERTIFICATE
+  FINANCIAL_STATEMENT
   OTHER
 }
 
@@ -183,6 +251,8 @@ enum DocumentStatus {
   PROCESSING
   VERIFIED
   REJECTED
+  EXPIRED
+  PENDING_REVIEW
 }
 
 enum OtpType {
@@ -195,6 +265,7 @@ enum OtpPurpose {
   PHONE_VERIFICATION
   PASSWORD_RESET
   LOGIN_VERIFICATION
+  ACCOUNT_RECOVERY
 }
 
 enum NotificationType {
@@ -207,17 +278,21 @@ enum NotificationType {
   SCORE_UPDATED
   EKYC_COMPLETED
   PASSWORD_RESET
+  SECURITY_ALERT
+  SYSTEM_MAINTENANCE
 }
 
 enum NotificationChannel {
   EMAIL
   SMS
   PUSH
+  IN_APP
 }
 
 enum NotificationStatus {
   PENDING
   SENT
+  DELIVERED
   FAILED
   CANCELLED
 }
