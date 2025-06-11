@@ -1,9 +1,23 @@
-// backend/shared/utils/index.ts
-
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { JWTPayload, ApiResponse } from '../types';
+
+// Types
+export interface JWTPayload {
+  userId: string;
+  email: string;
+  type: 'access' | 'refresh';
+  iat: number;
+  exp: number;
+}
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+  timestamp: string;
+}
 
 // Password utilities
 export const hashPassword = async (password: string): Promise<string> => {
@@ -69,7 +83,7 @@ export const createSuccessResponse = <T>(
   success: true,
   message,
   data,
-  timestamp: new Date()
+  timestamp: new Date().toISOString()
 });
 
 export const createErrorResponse = (
@@ -79,7 +93,7 @@ export const createErrorResponse = (
   success: false,
   message,
   error,
-  timestamp: new Date()
+  timestamp: new Date().toISOString()
 });
 
 // Validation utilities
@@ -94,33 +108,8 @@ export const isValidPhone = (phone: string): boolean => {
 };
 
 export const isStrongPassword = (password: string): boolean => {
-  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
   return passwordRegex.test(password);
-};
-
-// File utilities
-export const getFileExtension = (filename: string): string => {
-  return filename.split('.').pop()?.toLowerCase() || '';
-};
-
-export const isAllowedFileType = (mimeType: string): boolean => {
-  const allowedTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/jpg',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ];
-  return allowedTypes.includes(mimeType);
-};
-
-export const formatFileSize = (bytes: number): string => {
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  if (bytes === 0) return '0 Bytes';
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 };
 
 // Date utilities
@@ -136,9 +125,21 @@ export const isExpired = (date: Date): boolean => {
   return new Date() > date;
 };
 
-// Encryption utilities for sensitive data at rest
+// File utilities
+export const getFileExtension = (filename: string): string => {
+  return filename.split('.').pop()?.toLowerCase() || '';
+};
+
+export const formatFileSize = (bytes: number): string => {
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  if (bytes === 0) return '0 Bytes';
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+};
+
+// Encryption utilities
 export const encryptSensitiveData = (data: string): { encrypted: string; iv: string } => {
-  const algorithm = 'aes-256-gcm';
+  const algorithm = 'aes-256-cbc';
   const key = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
   const iv = crypto.randomBytes(16);
   
@@ -153,7 +154,7 @@ export const encryptSensitiveData = (data: string): { encrypted: string; iv: str
 };
 
 export const decryptSensitiveData = (encryptedData: string, ivHex: string): string => {
-  const algorithm = 'aes-256-gcm';
+  const algorithm = 'aes-256-cbc';
   const key = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
   const iv = Buffer.from(ivHex, 'hex');
   
@@ -187,11 +188,6 @@ export const calculateCompletionPercentage = (user: any, documents: any[]): numb
   score += docScore;
   
   return Math.min(score, maxScore);
-};
-
-// Rate limiting utilities
-export const createRateLimitKey = (ip: string, endpoint: string): string => {
-  return `rate_limit:${ip}:${endpoint}`;
 };
 
 // Logging utilities

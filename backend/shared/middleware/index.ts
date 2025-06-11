@@ -6,24 +6,29 @@ import { verifyToken, createErrorResponse, sanitizeForLogging } from '../utils';
 import winston from 'winston';
 
 // Configure logger
-const logger = winston.createLogger({
-  level: 'info',
+export const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: 'talaty-api' },
+  defaultMeta: { service: process.env.SERVICE_NAME || 'talaty-service' },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.File({ 
+      filename: `${process.env.LOG_FILE_PATH || './logs'}/error.log`, 
+      level: 'error' 
+    }),
+    new winston.transports.File({ 
+      filename: `${process.env.LOG_FILE_PATH || './logs'}/combined.log` 
+    }),
     new winston.transports.Console({
       format: winston.format.simple()
     })
   ]
 });
 
-// Extend Request type to include user
+// Extend Express Request type
 declare global {
   namespace Express {
     interface Request {
@@ -61,7 +66,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 };
 
-// Optional authentication middleware (for routes that work with or without auth)
+// Optional authentication middleware
 export const optionalAuth = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
@@ -74,7 +79,6 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction) =>
         email: decoded.email
       };
     } catch (error) {
-      // Token is invalid, but we don't reject the request
       logger.warn('Optional auth failed:', error);
     }
   }
@@ -170,7 +174,7 @@ export const errorHandler = (
     ip: req.ip
   });
 
-  // Mongoose validation error
+  // Validation errors
   if (error.name === 'ValidationError') {
     const errors = Object.values(error.errors).map((err: any) => err.message);
     return res.status(400).json(
@@ -191,16 +195,10 @@ export const errorHandler = (
     );
   }
 
-  // Multer errors (file upload)
+  // Multer errors
   if (error.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json(
       createErrorResponse('File too large', 'FILE_TOO_LARGE')
-    );
-  }
-
-  if (error.code === 'LIMIT_UNEXPECTED_FILE') {
-    return res.status(400).json(
-      createErrorResponse('Unexpected file field', 'INVALID_FILE_FIELD')
     );
   }
 
@@ -225,13 +223,7 @@ export const errorHandler = (
 // CORS middleware with specific origins
 export const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://talaty.app',
-      'https://www.talaty.app',
-      'https://app.talaty.com'
-    ];
+    const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000').split(',');
 
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
@@ -273,7 +265,7 @@ export const healthCheck = (serviceName: string) => {
     const health = {
       service: serviceName,
       status: 'healthy',
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       version: process.env.npm_package_version || '1.0.0'
@@ -292,5 +284,3 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   res.setHeader('Content-Security-Policy', "default-src 'self'");
   next();
 };
-
-export { logger };
