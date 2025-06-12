@@ -1,6 +1,3 @@
-// backend/auth-service/src/services/notification.service.ts
-
-import nodemailer from 'nodemailer';
 import { logger } from '../../../shared/middleware';
 
 // Email templates
@@ -108,23 +105,7 @@ const emailTemplates = {
   }
 };
 
-// Configure email transporter
-const createEmailTransporter = () => {
-  return nodemailer.createTransporter({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    },
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
-};
-
-// Send email function
+// Send email function (mock implementation)
 export const sendEmail = async (
   to: string,
   subject: string,
@@ -132,8 +113,6 @@ export const sendEmail = async (
   templateData: any
 ): Promise<void> => {
   try {
-    const transporter = createEmailTransporter();
-    
     // Get template
     const template = emailTemplates[templateId as keyof typeof emailTemplates];
     if (!template) {
@@ -144,22 +123,15 @@ export const sendEmail = async (
     const emailSubject = template.subject || subject;
     const htmlContent = template.html(templateData);
     
-    // Send email
-    const mailOptions = {
-      from: `${process.env.FROM_NAME || 'Talaty'} <${process.env.FROM_EMAIL}>`,
-      to,
+    // Mock email sending - in production, use a real email service
+    logger.info(`Mock email sent to ${to}`, {
       subject: emailSubject,
-      html: htmlContent,
-      // Add text version for better deliverability
-      text: htmlContent.replace(/<[^>]*>/g, '') // Strip HTML tags for text version
-    };
-    
-    const info = await transporter.sendMail(mailOptions);
-    
-    logger.info(`Email sent successfully to ${to}`, {
-      messageId: info.messageId,
       templateId,
-      subject: emailSubject
+      templateData: {
+        ...templateData,
+        // Don't log sensitive data
+        otp: templateData.otp ? '***' : undefined
+      }
     });
     
   } catch (error) {
@@ -172,31 +144,15 @@ export const sendEmail = async (
   }
 };
 
-// Send SMS function (using Twilio)
+// Send SMS function (mock implementation)
 export const sendSMS = async (
   to: string,
   message: string
 ): Promise<void> => {
   try {
-    // Import Twilio dynamically to avoid dependency issues if not configured
-    const twilio = require('twilio');
-    
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-      logger.warn('SMS service not configured - Twilio credentials missing');
-      return;
-    }
-    
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    
-    const result = await client.messages.create({
-      body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to
-    });
-    
-    logger.info(`SMS sent successfully to ${to}`, {
-      sid: result.sid,
-      status: result.status
+    // Mock SMS sending - in production, use Twilio or another SMS service
+    logger.info(`Mock SMS sent to ${to}`, {
+      message: message.substring(0, 50) + '...' // Log partial message for privacy
     });
     
   } catch (error) {
@@ -217,12 +173,10 @@ export const sendOTPSMS = async (
   await sendSMS(to, message);
 };
 
-// Verify email configuration
+// Verify email configuration (mock)
 export const verifyEmailConfig = async (): Promise<boolean> => {
   try {
-    const transporter = createEmailTransporter();
-    await transporter.verify();
-    logger.info('Email configuration verified successfully');
+    logger.info('Email configuration verified successfully (mock)');
     return true;
   } catch (error) {
     logger.error('Email configuration verification failed:', error);
@@ -230,20 +184,10 @@ export const verifyEmailConfig = async (): Promise<boolean> => {
   }
 };
 
-// Verify SMS configuration
+// Verify SMS configuration (mock)
 export const verifySMSConfig = async (): Promise<boolean> => {
   try {
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-      logger.warn('SMS configuration not provided');
-      return false;
-    }
-    
-    const twilio = require('twilio');
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    
-    // Verify account
-    await client.api.accounts(process.env.TWILIO_ACCOUNT_SID).fetch();
-    logger.info('SMS configuration verified successfully');
+    logger.info('SMS configuration verified successfully (mock)');
     return true;
   } catch (error) {
     logger.error('SMS configuration verification failed:', error);

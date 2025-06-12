@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -49,6 +46,8 @@ model User {
   @@index([email])
   @@index([eKycStatus])
   @@index([isActive])
+  @@index([businessName])
+  @@index([createdAt])
 }
 
 model UserSession {
@@ -66,6 +65,7 @@ model UserSession {
   @@map("user_sessions")
   @@index([userId])
   @@index([sessionId])
+  @@index([expiresAt])
 }
 
 model RefreshToken {
@@ -82,6 +82,7 @@ model RefreshToken {
   @@map("refresh_tokens")
   @@index([userId])
   @@index([token])
+  @@index([expiresAt])
 }
 
 model OtpVerification {
@@ -100,6 +101,8 @@ model OtpVerification {
   @@map("otp_verifications")
   @@index([userId])
   @@index([code])
+  @@index([expiresAt])
+  @@index([type, purpose])
 }
 
 model Document {
@@ -129,6 +132,8 @@ model Document {
   @@index([documentType])
   @@index([status])
   @@index([s3Key])
+  @@index([uploadedAt])
+  @@index([verifiedAt])
 }
 
 model ScoreHistory {
@@ -148,6 +153,7 @@ model ScoreHistory {
   @@map("score_histories")
   @@index([userId])
   @@index([calculatedAt])
+  @@index([totalScore])
 }
 
 model Notification {
@@ -174,6 +180,8 @@ model Notification {
   @@index([userId])
   @@index([status])
   @@index([type])
+  @@index([channel])
+  @@index([createdAt])
 }
 
 model AuditLog {
@@ -194,9 +202,9 @@ model AuditLog {
   @@index([action])
   @@index([resource])
   @@index([createdAt])
+  @@index([resourceId])
 }
 
-// Settings for system configuration
 model SystemSetting {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -212,6 +220,158 @@ model SystemSetting {
   @@index([isActive])
 }
 
+model BusinessRegistry {
+  id                String   @id @default(cuid())
+  registrationNumber String  @unique
+  businessName      String
+  businessType      String
+  status            String
+  registrationDate  DateTime
+  address           String?
+  country           String
+  isVerified        Boolean  @default(false)
+  verifiedAt        DateTime?
+  lastCheckedAt     DateTime @default(now())
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("business_registry")
+  @@index([registrationNumber])
+  @@index([businessName])
+  @@index([country])
+  @@index([status])
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  name      String
+  key       String   @unique
+  userId    String?
+  scopes    String[]
+  isActive  Boolean  @default(true)
+  expiresAt DateTime?
+  lastUsedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("api_keys")
+  @@index([key])
+  @@index([userId])
+  @@index([isActive])
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  events    String[]
+  secret    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@map("webhook_endpoints")
+  @@index([userId])
+  @@index([isActive])
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  endpointId String
+  eventType  String
+  payload    Json
+  status     String   @default("pending")
+  attempts   Int      @default(0)
+  lastAttempt DateTime?
+  nextAttempt DateTime?
+  responseCode Int?
+  responseBody String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+  @@index([endpointId])
+  @@index([status])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model FileUpload {
+  id        String   @id @default(cuid())
+  userId    String?
+  fileName  String
+  mimeType  String
+  size      Int
+  s3Key     String   @unique
+  s3Url     String
+  purpose   String?
+  metadata  Json?
+  isTemporary Boolean @default(false)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("file_uploads")
+  @@index([userId])
+  @@index([s3Key])
+  @@index([purpose])
+  @@index([isTemporary])
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  id        String   @id @default(cuid())
+  identifier String  // IP address, user ID, API key, etc.
+  type      String   // 'ip', 'user', 'api_key'
+  endpoint  String
+  count     Int      @default(1)
+  windowStart DateTime
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rate_limits")
+  @@unique([identifier, type, endpoint, windowStart])
+  @@index([identifier, type])
+  @@index([expiresAt])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("password_resets")
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  isVerified Boolean @default(false)
+  verifiedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("email_verifications")
+  @@index([token])
+  @@index([userId])
+  @@index([email])
+  @@index([expiresAt])
+}
+
 // Enums
 enum BusinessType {
   SOLE_PROPRIETORSHIP
@@ -220,7 +380,10 @@ enum BusinessType {
   LLC
   NONPROFIT
   COOPERATIVE
+  GOVERNMENT
   OTHER
+
+  @@map("business_type")
 }
 
 enum EKycStatus {
@@ -230,6 +393,9 @@ enum EKycStatus {
   COMPLETED
   REJECTED
   SUSPENDED
+  EXPIRED
+
+  @@map("ekyc_status")
 }
 
 enum DocumentType {
@@ -243,7 +409,13 @@ enum DocumentType {
   PROOF_OF_ADDRESS
   REGISTRATION_CERTIFICATE
   FINANCIAL_STATEMENT
+  MEMORANDUM_OF_ASSOCIATION
+  ARTICLES_OF_INCORPORATION
+  BOARD_RESOLUTION
+  POWER_OF_ATTORNEY
   OTHER
+
+  @@map("document_type")
 }
 
 enum DocumentStatus {
@@ -253,11 +425,18 @@ enum DocumentStatus {
   REJECTED
   EXPIRED
   PENDING_REVIEW
+  REQUIRES_ACTION
+
+  @@map("document_status")
 }
 
 enum OtpType {
   EMAIL
   SMS
+  VOICE
+  AUTHENTICATOR
+
+  @@map("otp_type")
 }
 
 enum OtpPurpose {
@@ -266,6 +445,10 @@ enum OtpPurpose {
   PASSWORD_RESET
   LOGIN_VERIFICATION
   ACCOUNT_RECOVERY
+  TRANSACTION_VERIFICATION
+  PROFILE_UPDATE
+
+  @@map("otp_purpose")
 }
 
 enum NotificationType {
@@ -277,9 +460,18 @@ enum NotificationType {
   DOCUMENT_REJECTED
   SCORE_UPDATED
   EKYC_COMPLETED
+  EKYC_REJECTED
   PASSWORD_RESET
+  PASSWORD_CHANGED
+  PROFILE_UPDATED
   SECURITY_ALERT
+  LOGIN_ALERT
   SYSTEM_MAINTENANCE
+  PAYMENT_RECEIVED
+  SUBSCRIPTION_EXPIRED
+  API_LIMIT_REACHED
+
+  @@map("notification_type")
 }
 
 enum NotificationChannel {
@@ -287,6 +479,9 @@ enum NotificationChannel {
   SMS
   PUSH
   IN_APP
+  WEBHOOK
+
+  @@map("notification_channel")
 }
 
 enum NotificationStatus {
@@ -295,4 +490,8 @@ enum NotificationStatus {
   DELIVERED
   FAILED
   CANCELLED
+  BOUNCED
+  COMPLAINED
+
+  @@map("notification_status")
 }

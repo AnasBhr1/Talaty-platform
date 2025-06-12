@@ -1,5 +1,3 @@
-// backend/auth-service/src/validation/auth.validation.ts
-
 import Joi from 'joi';
 
 // Password validation regex: at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
@@ -144,51 +142,5 @@ export const passwordResetConfirmSchema = Joi.object({
     .messages({
       'string.pattern.base': 'Password must be at least 8 characters long and contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character',
       'any.required': 'New password is required'
-    })
-});
-
-export const changePasswordSchema = Joi.object({
-  currentPassword: Joi.string()
-    .required()
-    .messages({
-      'any.required': 'Current password is required'
-    }),
-    
-  newPassword: Joi.string()
-    .pattern(passwordRegex)
-    .required()
-    .messages({
-      'string.pattern.base': 'Password must be at least 8 characters long and contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character',
-      'any.required': 'New password is required'
-    })
-});
-
-export const sendPhoneVerificationSchema = Joi.object({
-  phone: Joi.string()
-    .pattern(phoneRegex)
-    .required()
-    .messages({
-      'string.pattern.base': 'Please provide a valid phone number',
-      'any.required': 'Phone number is required'
-    })
-});
-
-export const verifyPhoneSchema = Joi.object({
-  phone: Joi.string()
-    .pattern(phoneRegex)
-    .required()
-    .messages({
-      'string.pattern.base': 'Please provide a valid phone number',
-      'any.required': 'Phone number is required'
-    }),
-    
-  otp: Joi.string()
-    .length(6)
-    .pattern(/^\d{6}$/)
-    .required()
-    .messages({
-      'string.length': 'OTP must be exactly 6 digits',
-      'string.pattern.base': 'OTP must contain only numbers',
-      'any.required': 'OTP is required'
     })
 });

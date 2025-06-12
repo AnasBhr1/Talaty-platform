@@ -1,5 +1,3 @@
-# backend/docker-compose.yml
-
 version: '3.8'
 
 services:
@@ -36,9 +34,9 @@ services:
     networks:
       - talaty-network
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass talaty_redis_password
+    command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -56,7 +54,9 @@ services:
       - NODE_ENV=development
       - PORT=3001
       - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_auth?schema=public
-      - REDIS_URL=redis://talaty_redis_password@redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-in-production
+      - ENCRYPTION_KEY=your-32-byte-hex-encryption-key-change-in-production
     volumes:
       - ./auth-service:/app
       - /app/node_modules
@@ -65,8 +65,6 @@ services:
       - talaty-network
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -88,6 +86,7 @@ services:
       - PORT=3002
       - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_user?schema=public
       - AUTH_SERVICE_URL=http://auth-service:3001
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
     volumes:
       - ./user-service:/app
       - /app/node_modules
@@ -120,6 +119,7 @@ services:
       - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_document?schema=public
       - AUTH_SERVICE_URL=http://auth-service:3001
       - USER_SERVICE_URL=http://user-service:3002
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
     volumes:
       - ./document-service:/app
       - /app/node_modules
@@ -184,7 +184,6 @@ services:
       - NODE_ENV=development
       - PORT=3005
       - DATABASE_URL=postgresql://talaty_user:talaty_password@postgres:5432/talaty_notification?schema=public
-      - REDIS_URL=redis://talaty_redis_password@redis:6379
     volumes:
       - ./notification-service:/app
       - /app/node_modules
@@ -194,8 +193,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
@@ -203,72 +200,10 @@ services:
       timeout: 10s
       retries: 3
 
-  # API Gateway (Nginx)
-  api-gateway:
-    image: nginx:alpine
-    container_name: talaty-api-gateway
-    ports:
-      - "8080:80"
-    volumes:
-      - ./api-gateway/nginx.conf:/etc/nginx/nginx.conf
-      - ./api-gateway/logs:/var/log/nginx
-    networks:
-      - talaty-network
-    depends_on:
-      - auth-service
-      - user-service
-      - document-service
-      - scoring-service
-      - notification-service
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Monitoring and Observability
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: talaty-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    networks:
-      - talaty-network
-    restart: unless-stopped
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: talaty-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-    networks:
-      - talaty-network
-    restart: unless-stopped
-
 volumes:
   postgres_data:
     driver: local
   redis_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
     driver: local
 
 networks:

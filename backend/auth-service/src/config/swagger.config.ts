@@ -1,5 +1,3 @@
-// backend/auth-service/src/config/swagger.config.ts
-
 export const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -52,32 +50,6 @@ export const swaggerOptions = {
                   },
                   error: {
                     type: 'string',
-                    example: 'INTERNAL_ERROR'
-                  },
-                  timestamp: {
-                    type: 'string',
-                    format: 'date-time'
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    tags: [
-      {
-        name: 'Authentication',
-        description: 'User authentication and authorization operations'
-      }
-    ],
-    paths: {}
-  },
-  apis: [
-    './src/routes/*.ts',
-    './src/controllers/*.ts'
-  ]
-};'string',
                     example: 'INVALID_TOKEN'
                   },
                   timestamp: {
@@ -161,4 +133,29 @@ export const swaggerOptions = {
                     example: 'Internal server error'
                   },
                   error: {
-                    type:
+                    type: 'string',
+                    example: 'INTERNAL_ERROR'
+                  },
+                  timestamp: {
+                    type: 'string',
+                    format: 'date-time'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    tags: [
+      {
+        name: 'Authentication',
+        description: 'User authentication and authorization operations'
+      }
+    ]
+  },
+  apis: [
+    './src/routes/*.ts',
+    './src/controllers/*.ts'
+  ]
+};
