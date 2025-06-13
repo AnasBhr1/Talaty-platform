@@ -1,28 +1,26 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface User {
   id: string
   email: string
   firstName: string
   lastName: string
-  role: string
-  isEmailVerified: boolean
-  businessProfile?: {
-    businessName: string
-    businessType: string
-    status: string
-  }
+  businessName?: string
+  eKycStatus: string
+  isVerified: boolean
+  score?: number
 }
 
 interface AuthContextType {
   user: User | null
-  loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
-  refreshToken: () => Promise<boolean>
+  register: (data: RegisterData) => Promise<void>
+  refreshToken: () => Promise<void>
 }
 
 interface RegisterData {
@@ -30,141 +28,159 @@ interface RegisterData {
   password: string
   firstName: string
   lastName: string
-  businessName: string
-  businessType: string
-  phoneNumber: string
+  businessName?: string
+  businessType?: string
+  phone?: string
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+
+  const apiUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:3001'
 
   useEffect(() => {
-    // Check if user is logged in on mount
     checkAuth()
   }, [])
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('accessToken')
       if (!token) {
-        setLoading(false)
+        setIsLoading(false)
         return
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL}/api/auth/me`, {
+      const response = await fetch(`${apiUrl}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+          'Content-Type': 'application/json'
+        }
       })
 
       if (response.ok) {
-        const userData = await response.json()
-        setUser(userData.user)
+        const data = await response.json()
+        setUser(data.data)
       } else {
-        localStorage.removeItem('token')
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
       }
     } catch (error) {
       console.error('Auth check failed:', error)
-      localStorage.removeItem('token')
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   const login = async (email: string, password: string) => {
+    setIsLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL}/api/auth/login`, {
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password })
       })
 
       const data = await response.json()
 
-      if (response.ok) {
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('refreshToken', data.refreshToken)
-        setUser(data.user)
-        return { success: true }
-      } else {
-        return { success: false, error: data.message || 'Login failed' }
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed')
       }
+
+      localStorage.setItem('accessToken', data.data.tokens.accessToken)
+      localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
+      setUser(data.data.user)
+      router.push('/dashboard')
     } catch (error) {
-      return { success: false, error: 'Network error' }
+      throw error
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const register = async (data: RegisterData) => {
+    setIsLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL}/api/auth/register`, {
+      const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(data)
       })
 
       const result = await response.json()
 
-      if (response.ok) {
-        return { success: true }
-      } else {
-        return { success: false, error: result.message || 'Registration failed' }
+      if (!response.ok) {
+        throw new Error(result.message || 'Registration failed')
       }
-    } catch (error) {
-      return { success: false, error: 'Network error' }
-    }
-  }
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    setUser(null)
+      localStorage.setItem('accessToken', result.data.tokens.accessToken)
+      localStorage.setItem('refreshToken', result.data.tokens.refreshToken)
+      setUser(result.data.user)
+      router.push('/dashboard')
+    } catch (error) {
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const refreshToken = async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken')
-      if (!refreshToken) return false
+      if (!refreshToken) {
+        throw new Error('No refresh token')
+      }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_AUTH_SERVICE_URL}/api/auth/refresh`, {
+      const response = await fetch(`${apiUrl}/api/auth/refresh`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({ refreshToken })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        localStorage.setItem('token', data.token)
-        return true
-      } else {
-        logout()
-        return false
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed')
       }
+
+      localStorage.setItem('accessToken', data.data.tokens.accessToken)
+      localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
     } catch (error) {
       logout()
-      return false
+      throw error
     }
   }
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    refreshToken,
+  const logout = () => {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    setUser(null)
+    router.push('/auth/login')
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      login,
+      logout,
+      register,
+      refreshToken
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

@@ -1,5 +1,3 @@
-// frontend/src/app/page.tsx
-
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -22,6 +20,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 const features = [
+  {
+    icon: ShieldCheck,
+    title: 'Advanced eKYC',
+    description: 'Complete digital identity verification with document validation and biometric checks.'
+  },
   {
     icon: FileText,
     title: 'Smart Document Processing',
@@ -407,9 +410,4 @@ export default function HomePage() {
       </footer>
     </div>
   )
-} ShieldCheck,
-    title: 'Advanced eKYC',
-    description: 'Complete digital identity verification with document validation and biometric checks.'
-  },
-  {
-    icon:
+}

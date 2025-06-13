@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import { AuthProvider } from '@/hooks/useAuth'
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -8,8 +8,8 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <div>
+    <AuthProvider>
       {children}
-    </div>
+    </AuthProvider>
   )
 }
