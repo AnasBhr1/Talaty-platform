@@ -1,235 +1,391 @@
+import axios from 'axios';
 import { logger } from '../../../shared/middleware';
 
-interface ProcessedFile {
-  buffer: Buffer;
-  size: number;
-  dimensions?: {
-    width: number;
-    height: number;
-  };
-  processingApplied: string[];
-}
-
-interface ValidationResult {
+interface DocumentVerificationResult {
   isValid: boolean;
-  error?: string;
+  confidence: number;
+  reason?: string;
+  details?: {
+    documentType?: string;
+    extractedData?: Record<string, any>;
+    qualityScore?: number;
+    tamperingDetected?: boolean;
+    ocrResults?: string[];
+  };
+  source: string;
+  verifiedAt: Date;
 }
 
-export class DocumentProcessor {
-  private readonly maxFileSize: number;
-  private readonly allowedTypes: string[];
+export class DocumentVerificationService {
+  private readonly verificationApiKey: string;
+  private readonly verificationApiUrl: string;
+  private readonly ocrApiKey: string;
+  private readonly enabled: boolean;
 
   constructor() {
-    this.maxFileSize = parseInt(process.env.MAX_FILE_SIZE || '10485760'); // 10MB
-    this.allowedTypes = (process.env.ALLOWED_FILE_TYPES || 'image/jpeg,image/png,application/pdf').split(',');
+    this.verificationApiKey = process.env.VERIFICATION_API_KEY || '';
+    this.verificationApiUrl = process.env.VERIFICATION_API_URL || 'https://api.documentverification.com';
+    this.ocrApiKey = process.env.OCR_API_KEY || '';
+    this.enabled = process.env.ENABLE_DOCUMENT_VERIFICATION === 'true';
   }
 
   /**
-   * Validate uploaded file
+   * Verify document authenticity and extract data
    */
-  async validateFile(file: Express.Multer.File): Promise<ValidationResult> {
+  async verifyDocument(documentUrl: string, documentType?: string): Promise<DocumentVerificationResult> {
     try {
-      // Check file size
-      if (file.size > this.maxFileSize) {
-        return {
-          isValid: false,
-          error: `File size exceeds maximum allowed size of ${this.maxFileSize} bytes`
-        };
+      if (!this.enabled) {
+        logger.info('Document verification disabled, using mock verification');
+        return this.mockVerification(documentUrl, documentType);
       }
 
-      // Check file type
-      if (!this.allowedTypes.includes(file.mimetype)) {
-        return {
-          isValid: false,
-          error: `File type ${file.mimetype} is not allowed. Allowed types: ${this.allowedTypes.join(', ')}`
-        };
+      if (!this.verificationApiKey) {
+        logger.warn('Document verification API key not configured, using mock verification');
+        return this.mockVerification(documentUrl, documentType);
       }
 
-      // Check if file has content
-      if (file.size === 0) {
-        return {
-          isValid: false,
-          error: 'File is empty'
-        };
+      // Perform actual verification with external service
+      const verificationResult = await this.performExternalVerification(documentUrl, documentType);
+
+      // If external verification fails, fallback to basic checks
+      if (!verificationResult.isValid) {
+        const basicCheck = await this.performBasicVerification(documentUrl, documentType);
+        return basicCheck;
       }
 
-      // Validate file header (basic check)
-      const isValidHeader = this.validateFileHeader(file.buffer, file.mimetype);
-      if (!isValidHeader) {
-        return {
-          isValid: false,
-          error: 'File appears to be corrupted or invalid'
-        };
-      }
-
-      return { isValid: true };
+      return verificationResult;
     } catch (error) {
-      logger.error('File validation error:', error);
-      return {
-        isValid: false,
-        error: 'File validation failed'
-      };
+      logger.error('Document verification error:', error);
+      
+      // Fallback to basic verification on error
+      try {
+        return await this.performBasicVerification(documentUrl, documentType);
+      } catch (fallbackError) {
+        logger.error('Fallback verification also failed:', fallbackError);
+        return {
+          isValid: false,
+          confidence: 0,
+          reason: 'Verification service unavailable',
+          source: 'error',
+          verifiedAt: new Date()
+        };
+      }
     }
   }
 
   /**
-   * Process uploaded file (resize, optimize, etc.)
+   * Perform verification with external service
    */
-  async processFile(file: Express.Multer.File, documentType: string): Promise<ProcessedFile> {
+  private async performExternalVerification(
+    documentUrl: string,
+    documentType?: string
+  ): Promise<DocumentVerificationResult> {
     try {
-      let processedBuffer = file.buffer;
-      let processingApplied: string[] = [];
-      let dimensions: { width: number; height: number } | undefined;
+      const response = await axios.post(
+        `${this.verificationApiUrl}/v1/verify`,
+        {
+          document_url: documentUrl,
+          document_type: documentType,
+          verification_options: {
+            check_authenticity: true,
+            extract_data: true,
+            detect_tampering: true,
+            quality_check: true
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.verificationApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000 // 30 seconds
+        }
+      );
 
-      // For images, we might want to resize or optimize
-      if (file.mimetype.startsWith('image/')) {
-        // Mock image processing - in production, use Sharp or similar
-        logger.info(`Processing image file: ${file.originalname}`);
-        processingApplied.push('image_optimization');
+      if (response.status === 200 && response.data) {
+        const data = response.data;
         
-        // Mock dimensions
-        dimensions = {
-          width: 1920,
-          height: 1080
+        return {
+          isValid: data.is_authentic === true && data.quality_score >= 0.7,
+          confidence: data.confidence || 0,
+          reason: data.is_authentic ? undefined : data.rejection_reason,
+          details: {
+            documentType: data.document_type,
+            extractedData: data.extracted_data,
+            qualityScore: data.quality_score,
+            tamperingDetected: data.tampering_detected,
+            ocrResults: data.ocr_results
+          },
+          source: 'external_api',
+          verifiedAt: new Date()
         };
       }
 
-      // For PDFs, we might want to compress
-      if (file.mimetype === 'application/pdf') {
-        logger.info(`Processing PDF file: ${file.originalname}`);
-        processingApplied.push('pdf_optimization');
-      }
-
-      return {
-        buffer: processedBuffer,
-        size: processedBuffer.length,
-        dimensions,
-        processingApplied
-      };
+      throw new Error('Invalid response from verification service');
     } catch (error) {
-      logger.error('File processing error:', error);
-      // Return original file if processing fails
-      return {
-        buffer: file.buffer,
-        size: file.size,
-        processingApplied: []
-      };
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 400) {
+          return {
+            isValid: false,
+            confidence: 0,
+            reason: 'Invalid document format or type',
+            source: 'external_api',
+            verifiedAt: new Date()
+          };
+        }
+        
+        if (error.response?.status === 403) {
+          logger.error('Document verification API authentication failed');
+        }
+      }
+      
+      throw error;
     }
   }
 
   /**
-   * Validate file header to ensure it matches the claimed MIME type
+   * Perform basic verification checks
    */
-  private validateFileHeader(buffer: Buffer, mimeType: string): boolean {
+  private async performBasicVerification(
+    documentUrl: string,
+    documentType?: string
+  ): Promise<DocumentVerificationResult> {
     try {
-      if (buffer.length < 4) {
+      // Download document for basic analysis
+      const response = await axios.get(documentUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+        maxContentLength: 50 * 1024 * 1024 // 50MB max
+      });
+
+      const buffer = Buffer.from(response.data);
+      const contentType = response.headers['content-type'];
+
+      // Basic file validation
+      const basicChecks = {
+        validFileType: this.validateFileType(contentType, documentType),
+        appropriateSize: this.validateFileSize(buffer.length, documentType),
+        notCorrupted: this.validateFileIntegrity(buffer, contentType),
+        hasContent: buffer.length > 0
+      };
+
+      const passed = Object.values(basicChecks).filter(Boolean).length;
+      const total = Object.keys(basicChecks).length;
+      const confidence = passed / total;
+
+      const isValid = confidence >= 0.75; // 75% of basic checks must pass
+
+      return {
+        isValid,
+        confidence,
+        reason: isValid ? undefined : 'Failed basic validation checks',
+        details: {
+          documentType: this.detectDocumentType(contentType, documentType),
+          qualityScore: confidence,
+          tamperingDetected: false // Basic check can't detect tampering
+        },
+        source: 'basic_validation',
+        verifiedAt: new Date()
+      };
+    } catch (error) {
+      logger.error('Basic verification error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mock verification for development/testing
+   */
+  private mockVerification(documentUrl: string, documentType?: string): DocumentVerificationResult {
+    // Simple mock logic based on URL patterns
+    const isValid = !documentUrl.includes('invalid') && !documentUrl.includes('fake');
+    const confidence = isValid ? 0.9 : 0.1;
+
+    logger.info('Mock document verification', {
+      documentUrl,
+      documentType,
+      result: { isValid, confidence }
+    });
+
+    return {
+      isValid,
+      confidence,
+      reason: isValid ? undefined : 'Mock rejection for testing',
+      details: {
+        documentType: documentType || 'UNKNOWN',
+        extractedData: {
+          mockField: 'mockValue'
+        },
+        qualityScore: confidence,
+        tamperingDetected: false,
+        ocrResults: ['Mock OCR text']
+      },
+      source: 'mock',
+      verifiedAt: new Date()
+    };
+  }
+
+  /**
+   * Validate file type against expected document type
+   */
+  private validateFileType(contentType: string, documentType?: string): boolean {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    
+    if (!allowedTypes.includes(contentType)) {
+      return false;
+    }
+
+    // Specific validations based on document type
+    if (documentType) {
+      const documentTypeValidations: Record<string, string[]> = {
+        'ID_CARD': ['image/jpeg', 'image/png', 'image/jpg'],
+        'PASSPORT': ['image/jpeg', 'image/png', 'image/jpg'],
+        'BUSINESS_LICENSE': ['image/jpeg', 'image/png', 'application/pdf'],
+        'TAX_CERTIFICATE': ['application/pdf', 'image/jpeg', 'image/png'],
+        'BANK_STATEMENT': ['application/pdf'],
+        'UTILITY_BILL': ['application/pdf', 'image/jpeg', 'image/png']
+      };
+
+      const allowedForType = documentTypeValidations[documentType];
+      if (allowedForType && !allowedForType.includes(contentType)) {
         return false;
       }
+    }
 
-      const header = buffer.toString('hex', 0, 4).toLowerCase();
+    return true;
+  }
 
-      switch (mimeType) {
-        case 'image/jpeg':
-          return header.startsWith('ffd8');
-        case 'image/png':
-          return header === '89504e47';
-        case 'application/pdf':
-          return buffer.toString('ascii', 0, 4) === '%PDF';
-        default:
-          return true; // Allow unknown types to pass
+  /**
+   * Validate file size is appropriate for document type
+   */
+  private validateFileSize(size: number, documentType?: string): boolean {
+    const maxSizes: Record<string, number> = {
+      'ID_CARD': 5 * 1024 * 1024, // 5MB
+      'PASSPORT': 5 * 1024 * 1024, // 5MB
+      'BUSINESS_LICENSE': 10 * 1024 * 1024, // 10MB
+      'TAX_CERTIFICATE': 10 * 1024 * 1024, // 10MB
+      'BANK_STATEMENT': 15 * 1024 * 1024, // 15MB
+      'UTILITY_BILL': 10 * 1024 * 1024 // 10MB
+    };
+
+    const maxSize = documentType ? maxSizes[documentType] : 10 * 1024 * 1024; // Default 10MB
+    return size <= maxSize && size >= 1024; // At least 1KB
+  }
+
+  /**
+   * Basic file integrity check
+   */
+  private validateFileIntegrity(buffer: Buffer, contentType: string): boolean {
+    try {
+      // Check file headers
+      if (contentType === 'application/pdf') {
+        // PDF should start with %PDF
+        return buffer.toString('ascii', 0, 4) === '%PDF';
       }
+
+      if (contentType.startsWith('image/')) {
+        // Check common image headers
+        const header = buffer.toString('hex', 0, 4).toLowerCase();
+        
+        // JPEG: FFD8
+        if (contentType === 'image/jpeg' && header.startsWith('ffd8')) {
+          return true;
+        }
+        
+        // PNG: 89504E47
+        if (contentType === 'image/png' && header === '89504e47') {
+          return true;
+        }
+      }
+
+      return true; // If we can't verify, assume it's valid
     } catch (error) {
-      logger.error('File header validation error:', error);
+      logger.error('File integrity check error:', error);
       return false;
     }
   }
 
   /**
-   * Extract metadata from file
+   * Detect document type from content
    */
-  async extractMetadata(file: Express.Multer.File): Promise<Record<string, any>> {
+  private detectDocumentType(contentType: string, providedType?: string): string {
+    if (providedType) {
+      return providedType;
+    }
+
+    // Basic type detection based on content type
+    if (contentType === 'application/pdf') {
+      return 'PDF_DOCUMENT';
+    }
+
+    if (contentType.startsWith('image/')) {
+      return 'IMAGE_DOCUMENT';
+    }
+
+    return 'UNKNOWN';
+  }
+
+  /**
+   * Extract text from document using OCR
+   */
+  async extractText(documentUrl: string): Promise<string[]> {
     try {
-      const metadata: Record<string, any> = {
-        filename: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-        uploadedAt: new Date().toISOString()
-      };
-
-      // Extract additional metadata based on file type
-      if (file.mimetype.startsWith('image/')) {
-        metadata.type = 'image';
-        // In production, use exif-reader or similar for actual metadata extraction
-        metadata.exif = {
-          make: 'Unknown',
-          model: 'Unknown',
-          dateTime: new Date().toISOString()
-        };
+      if (!this.ocrApiKey) {
+        logger.warn('OCR API key not configured');
+        return ['OCR not configured'];
       }
 
-      if (file.mimetype === 'application/pdf') {
-        metadata.type = 'document';
-        metadata.pageCount = 1; // Mock page count
-      }
-
-      return metadata;
+      // Implementation would use an OCR service like Google Vision API, AWS Textract, etc.
+      // For now, return mock data
+      return ['Mock extracted text from document'];
     } catch (error) {
-      logger.error('Metadata extraction error:', error);
-      return {
-        filename: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size
-      };
+      logger.error('Text extraction error:', error);
+      return [];
     }
   }
 
   /**
-   * Generate file checksum
+   * Validate extracted data against expected patterns
    */
-  generateChecksum(buffer: Buffer): string {
-    const crypto = require('crypto');
-    return crypto.createHash('sha256').update(buffer).digest('hex');
+  validateExtractedData(extractedData: Record<string, any>, documentType: string): boolean {
+    try {
+      const validationRules: Record<string, (data: any) => boolean> = {
+        'ID_CARD': (data) => data.id_number && data.name,
+        'PASSPORT': (data) => data.passport_number && data.name,
+        'BUSINESS_LICENSE': (data) => data.license_number && data.business_name,
+        'TAX_CERTIFICATE': (data) => data.tax_id && data.business_name,
+        'BANK_STATEMENT': (data) => data.account_number || data.statement_date,
+        'UTILITY_BILL': (data) => data.account_number && data.service_address
+      };
+
+      const validator = validationRules[documentType];
+      return validator ? validator(extractedData) : true;
+    } catch (error) {
+      logger.error('Data validation error:', error);
+      return false;
+    }
   }
 
   /**
-   * Check if file processing is supported
+   * Check service health
    */
-  isProcessingSupported(mimeType: string): boolean {
-    const supportedTypes = [
-      'image/jpeg',
-      'image/png',
-      'application/pdf'
-    ];
-    return supportedTypes.includes(mimeType);
-  }
+  async checkServiceHealth(): Promise<boolean> {
+    if (!this.enabled || !this.verificationApiKey) {
+      return false;
+    }
 
-  /**
-   * Get file format info
-   */
-  getFileFormatInfo(mimeType: string): { category: string; description: string } {
-    const formatInfo: Record<string, { category: string; description: string }> = {
-      'image/jpeg': { category: 'image', description: 'JPEG Image' },
-      'image/png': { category: 'image', description: 'PNG Image' },
-      'image/jpg': { category: 'image', description: 'JPG Image' },
-      'application/pdf': { category: 'document', description: 'PDF Document' },
-      'application/msword': { category: 'document', description: 'Microsoft Word Document' },
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { 
-        category: 'document', 
-        description: 'Microsoft Word Document (DOCX)' 
-      }
-    };
+    try {
+      const response = await axios.get(`${this.verificationApiUrl}/health`, {
+        headers: {
+          'Authorization': `Bearer ${this.verificationApiKey}`
+        },
+        timeout: 5000
+      });
 
-    return formatInfo[mimeType] || { category: 'unknown', description: 'Unknown File Type' };
-  }
-
-  /**
-   * Sanitize filename
-   */
-  sanitizeFilename(filename: string): string {
-    // Remove potentially dangerous characters
-    return filename
-      .replace(/[^a-zA-Z0-9._-]/g, '_')
-      .replace(/_{2,}/g, '_')
-      .substring(0, 255); // Limit length
+      return response.status === 200;
+    } catch (error) {
+      logger.error('Document verification service health check failed:', error);
+      return false;
+    }
   }
 }

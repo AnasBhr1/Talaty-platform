@@ -1,391 +1,386 @@
-import axios from 'axios';
-import { logger } from '../../../shared/middleware';
+// frontend/src/components/ui/button.tsx
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
 
-interface DocumentVerificationResult {
-  isValid: boolean;
-  confidence: number;
-  reason?: string;
-  details?: {
-    documentType?: string;
-    extractedData?: Record<string, any>;
-    qualityScore?: number;
-    tamperingDetected?: boolean;
-    ocrResults?: string[];
-  };
-  source: string;
-  verifiedAt: Date;
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
 }
 
-export class DocumentVerificationService {
-  private readonly verificationApiKey: string;
-  private readonly verificationApiUrl: string;
-  private readonly ocrApiKey: string;
-  private readonly enabled: boolean;
-
-  constructor() {
-    this.verificationApiKey = process.env.VERIFICATION_API_KEY || '';
-    this.verificationApiUrl = process.env.VERIFICATION_API_URL || 'https://api.documentverification.com';
-    this.ocrApiKey = process.env.OCR_API_KEY || '';
-    this.enabled = process.env.ENABLE_DOCUMENT_VERIFICATION === 'true';
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
   }
+)
+Button.displayName = "Button"
 
-  /**
-   * Verify document authenticity and extract data
-   */
-  async verifyDocument(documentUrl: string, documentType?: string): Promise<DocumentVerificationResult> {
-    try {
-      if (!this.enabled) {
-        logger.info('Document verification disabled, using mock verification');
-        return this.mockVerification(documentUrl, documentType);
-      }
+export { Button, buttonVariants }
 
-      if (!this.verificationApiKey) {
-        logger.warn('Document verification API key not configured, using mock verification');
-        return this.mockVerification(documentUrl, documentType);
-      }
+// frontend/src/components/ui/input.tsx
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
-      // Perform actual verification with external service
-      const verificationResult = await this.performExternalVerification(documentUrl, documentType);
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
 
-      // If external verification fails, fallback to basic checks
-      if (!verificationResult.isValid) {
-        const basicCheck = await this.performBasicVerification(documentUrl, documentType);
-        return basicCheck;
-      }
-
-      return verificationResult;
-    } catch (error) {
-      logger.error('Document verification error:', error);
-      
-      // Fallback to basic verification on error
-      try {
-        return await this.performBasicVerification(documentUrl, documentType);
-      } catch (fallbackError) {
-        logger.error('Fallback verification also failed:', fallbackError);
-        return {
-          isValid: false,
-          confidence: 0,
-          reason: 'Verification service unavailable',
-          source: 'error',
-          verifiedAt: new Date()
-        };
-      }
-    }
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
   }
+)
+Input.displayName = "Input"
 
-  /**
-   * Perform verification with external service
-   */
-  private async performExternalVerification(
-    documentUrl: string,
-    documentType?: string
-  ): Promise<DocumentVerificationResult> {
-    try {
-      const response = await axios.post(
-        `${this.verificationApiUrl}/v1/verify`,
-        {
-          document_url: documentUrl,
-          document_type: documentType,
-          verification_options: {
-            check_authenticity: true,
-            extract_data: true,
-            detect_tampering: true,
-            quality_check: true
-          }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.verificationApiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000 // 30 seconds
-        }
-      );
+export { Input }
 
-      if (response.status === 200 && response.data) {
-        const data = response.data;
-        
-        return {
-          isValid: data.is_authentic === true && data.quality_score >= 0.7,
-          confidence: data.confidence || 0,
-          reason: data.is_authentic ? undefined : data.rejection_reason,
-          details: {
-            documentType: data.document_type,
-            extractedData: data.extracted_data,
-            qualityScore: data.quality_score,
-            tamperingDetected: data.tampering_detected,
-            ocrResults: data.ocr_results
-          },
-          source: 'external_api',
-          verifiedAt: new Date()
-        };
-      }
+// frontend/src/components/ui/label.tsx
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
 
-      throw new Error('Invalid response from verification service');
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 400) {
-          return {
-            isValid: false,
-            confidence: 0,
-            reason: 'Invalid document format or type',
-            source: 'external_api',
-            verifiedAt: new Date()
-          };
-        }
-        
-        if (error.response?.status === 403) {
-          logger.error('Document verification API authentication failed');
-        }
-      }
-      
-      throw error;
-    }
-  }
+const labelVariants = cva(
+  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+)
 
-  /**
-   * Perform basic verification checks
-   */
-  private async performBasicVerification(
-    documentUrl: string,
-    documentType?: string
-  ): Promise<DocumentVerificationResult> {
-    try {
-      // Download document for basic analysis
-      const response = await axios.get(documentUrl, {
-        responseType: 'arraybuffer',
-        timeout: 10000,
-        maxContentLength: 50 * 1024 * 1024 // 50MB max
-      });
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
+    VariantProps<typeof labelVariants>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={cn(labelVariants(), className)}
+    {...props}
+  />
+))
+Label.displayName = LabelPrimitive.Root.displayName
 
-      const buffer = Buffer.from(response.data);
-      const contentType = response.headers['content-type'];
+export { Label }
 
-      // Basic file validation
-      const basicChecks = {
-        validFileType: this.validateFileType(contentType, documentType),
-        appropriateSize: this.validateFileSize(buffer.length, documentType),
-        notCorrupted: this.validateFileIntegrity(buffer, contentType),
-        hasContent: buffer.length > 0
-      };
+// frontend/src/components/ui/card.tsx
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
-      const passed = Object.values(basicChecks).filter(Boolean).length;
-      const total = Object.keys(basicChecks).length;
-      const confidence = passed / total;
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
 
-      const isValid = confidence >= 0.75; // 75% of basic checks must pass
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
 
-      return {
-        isValid,
-        confidence,
-        reason: isValid ? undefined : 'Failed basic validation checks',
-        details: {
-          documentType: this.detectDocumentType(contentType, documentType),
-          qualityScore: confidence,
-          tamperingDetected: false // Basic check can't detect tampering
-        },
-        source: 'basic_validation',
-        verifiedAt: new Date()
-      };
-    } catch (error) {
-      logger.error('Basic verification error:', error);
-      throw error;
-    }
-  }
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
 
-  /**
-   * Mock verification for development/testing
-   */
-  private mockVerification(documentUrl: string, documentType?: string): DocumentVerificationResult {
-    // Simple mock logic based on URL patterns
-    const isValid = !documentUrl.includes('invalid') && !documentUrl.includes('fake');
-    const confidence = isValid ? 0.9 : 0.1;
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
 
-    logger.info('Mock document verification', {
-      documentUrl,
-      documentType,
-      result: { isValid, confidence }
-    });
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
 
-    return {
-      isValid,
-      confidence,
-      reason: isValid ? undefined : 'Mock rejection for testing',
-      details: {
-        documentType: documentType || 'UNKNOWN',
-        extractedData: {
-          mockField: 'mockValue'
-        },
-        qualityScore: confidence,
-        tamperingDetected: false,
-        ocrResults: ['Mock OCR text']
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+
+// frontend/src/components/ui/badge.tsx
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
       },
-      source: 'mock',
-      verifiedAt: new Date()
-    };
+    },
+    defaultVariants: {
+      variant: "default",
+    },
   }
+)
 
-  /**
-   * Validate file type against expected document type
-   */
-  private validateFileType(contentType: string, documentType?: string): boolean {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-    
-    if (!allowedTypes.includes(contentType)) {
-      return false;
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
+}
+
+export { Badge, badgeVariants }
+
+// frontend/src/components/ui/loading-spinner.tsx
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+interface LoadingSpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
+  size?: "sm" | "md" | "lg"
+}
+
+const LoadingSpinner = React.forwardRef<HTMLDivElement, LoadingSpinnerProps>(
+  ({ className, size = "md", ...props }, ref) => {
+    const sizeClasses = {
+      sm: "w-4 h-4",
+      md: "w-6 h-6", 
+      lg: "w-8 h-8"
     }
 
-    // Specific validations based on document type
-    if (documentType) {
-      const documentTypeValidations: Record<string, string[]> = {
-        'ID_CARD': ['image/jpeg', 'image/png', 'image/jpg'],
-        'PASSPORT': ['image/jpeg', 'image/png', 'image/jpg'],
-        'BUSINESS_LICENSE': ['image/jpeg', 'image/png', 'application/pdf'],
-        'TAX_CERTIFICATE': ['application/pdf', 'image/jpeg', 'image/png'],
-        'BANK_STATEMENT': ['application/pdf'],
-        'UTILITY_BILL': ['application/pdf', 'image/jpeg', 'image/png']
-      };
-
-      const allowedForType = documentTypeValidations[documentType];
-      if (allowedForType && !allowedForType.includes(contentType)) {
-        return false;
-      }
-    }
-
-    return true;
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "animate-spin rounded-full border-2 border-gray-300 border-t-blue-600",
+          sizeClasses[size],
+          className
+        )}
+        {...props}
+      />
+    )
   }
+)
+LoadingSpinner.displayName = "LoadingSpinner"
 
-  /**
-   * Validate file size is appropriate for document type
-   */
-  private validateFileSize(size: number, documentType?: string): boolean {
-    const maxSizes: Record<string, number> = {
-      'ID_CARD': 5 * 1024 * 1024, // 5MB
-      'PASSPORT': 5 * 1024 * 1024, // 5MB
-      'BUSINESS_LICENSE': 10 * 1024 * 1024, // 10MB
-      'TAX_CERTIFICATE': 10 * 1024 * 1024, // 10MB
-      'BANK_STATEMENT': 15 * 1024 * 1024, // 15MB
-      'UTILITY_BILL': 10 * 1024 * 1024 // 10MB
-    };
+export { LoadingSpinner }
 
-    const maxSize = documentType ? maxSizes[documentType] : 10 * 1024 * 1024; // Default 10MB
-    return size <= maxSize && size >= 1024; // At least 1KB
+// frontend/src/components/ui/toast.tsx
+import * as React from "react"
+import * as ToastPrimitives from "@radix-ui/react-toast"
+import { cva, type VariantProps } from "class-variance-authority"
+import { X } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const ToastProvider = ToastPrimitives.Provider
+
+const ToastViewport = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Viewport>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Viewport
+    ref={ref}
+    className={cn(
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      className
+    )}
+    {...props}
+  />
+))
+ToastViewport.displayName = ToastPrimitives.Viewport.displayName
+
+const toastVariants = cva(
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  {
+    variants: {
+      variant: {
+        default: "border bg-background text-foreground",
+        destructive:
+          "destructive border-destructive bg-destructive text-destructive-foreground",
+        success: "border-green-200 bg-green-50 text-green-900",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
   }
+)
 
-  /**
-   * Basic file integrity check
-   */
-  private validateFileIntegrity(buffer: Buffer, contentType: string): boolean {
-    try {
-      // Check file headers
-      if (contentType === 'application/pdf') {
-        // PDF should start with %PDF
-        return buffer.toString('ascii', 0, 4) === '%PDF';
-      }
+const Toast = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Root>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
+    VariantProps<typeof toastVariants>
+>(({ className, variant, ...props }, ref) => {
+  return (
+    <ToastPrimitives.Root
+      ref={ref}
+      className={cn(toastVariants({ variant }), className)}
+      {...props}
+    />
+  )
+})
+Toast.displayName = ToastPrimitives.Root.displayName
 
-      if (contentType.startsWith('image/')) {
-        // Check common image headers
-        const header = buffer.toString('hex', 0, 4).toLowerCase();
-        
-        // JPEG: FFD8
-        if (contentType === 'image/jpeg' && header.startsWith('ffd8')) {
-          return true;
-        }
-        
-        // PNG: 89504E47
-        if (contentType === 'image/png' && header === '89504e47') {
-          return true;
-        }
-      }
+const ToastAction = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Action>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Action
+    ref={ref}
+    className={cn(
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      className
+    )}
+    {...props}
+  />
+))
+ToastAction.displayName = ToastPrimitives.Action.displayName
 
-      return true; // If we can't verify, assume it's valid
-    } catch (error) {
-      logger.error('File integrity check error:', error);
-      return false;
-    }
-  }
+const ToastClose = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Close>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Close
+    ref={ref}
+    className={cn(
+      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      className
+    )}
+    toast-close=""
+    {...props}
+  >
+    <X className="h-4 w-4" />
+  </ToastPrimitives.Close>
+))
+ToastClose.displayName = ToastPrimitives.Close.displayName
 
-  /**
-   * Detect document type from content
-   */
-  private detectDocumentType(contentType: string, providedType?: string): string {
-    if (providedType) {
-      return providedType;
-    }
+const ToastTitle = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Title>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Title
+    ref={ref}
+    className={cn("text-sm font-semibold", className)}
+    {...props}
+  />
+))
+ToastTitle.displayName = ToastPrimitives.Title.displayName
 
-    // Basic type detection based on content type
-    if (contentType === 'application/pdf') {
-      return 'PDF_DOCUMENT';
-    }
+const ToastDescription = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Description>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Description
+    ref={ref}
+    className={cn("text-sm opacity-90", className)}
+    {...props}
+  />
+))
+ToastDescription.displayName = ToastPrimitives.Description.displayName
 
-    if (contentType.startsWith('image/')) {
-      return 'IMAGE_DOCUMENT';
-    }
+type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
-    return 'UNKNOWN';
-  }
+type ToastActionElement = React.ReactElement<typeof ToastAction>
 
-  /**
-   * Extract text from document using OCR
-   */
-  async extractText(documentUrl: string): Promise<string[]> {
-    try {
-      if (!this.ocrApiKey) {
-        logger.warn('OCR API key not configured');
-        return ['OCR not configured'];
-      }
-
-      // Implementation would use an OCR service like Google Vision API, AWS Textract, etc.
-      // For now, return mock data
-      return ['Mock extracted text from document'];
-    } catch (error) {
-      logger.error('Text extraction error:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Validate extracted data against expected patterns
-   */
-  validateExtractedData(extractedData: Record<string, any>, documentType: string): boolean {
-    try {
-      const validationRules: Record<string, (data: any) => boolean> = {
-        'ID_CARD': (data) => data.id_number && data.name,
-        'PASSPORT': (data) => data.passport_number && data.name,
-        'BUSINESS_LICENSE': (data) => data.license_number && data.business_name,
-        'TAX_CERTIFICATE': (data) => data.tax_id && data.business_name,
-        'BANK_STATEMENT': (data) => data.account_number || data.statement_date,
-        'UTILITY_BILL': (data) => data.account_number && data.service_address
-      };
-
-      const validator = validationRules[documentType];
-      return validator ? validator(extractedData) : true;
-    } catch (error) {
-      logger.error('Data validation error:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Check service health
-   */
-  async checkServiceHealth(): Promise<boolean> {
-    if (!this.enabled || !this.verificationApiKey) {
-      return false;
-    }
-
-    try {
-      const response = await axios.get(`${this.verificationApiUrl}/health`, {
-        headers: {
-          'Authorization': `Bearer ${this.verificationApiKey}`
-        },
-        timeout: 5000
-      });
-
-      return response.status === 200;
-    } catch (error) {
-      logger.error('Document verification service health check failed:', error);
-      return false;
-    }
-  }
+export {
+  type ToastProps,
+  type ToastActionElement,
+  ToastProvider,
+  ToastViewport,
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastAction,
 }
