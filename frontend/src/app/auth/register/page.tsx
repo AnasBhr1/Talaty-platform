@@ -508,11 +508,6 @@ export default function RegisterPage() {
               rotate: 360,
               scale: [1, 1.1, 1]
             }}
-          <motion.div
-            animate={{ 
-              rotate: 360,
-              scale: [1, 1.1, 1]
-            }}
             transition={{ 
               rotate: { duration: 35, repeat: Infinity, ease: "linear" },
               scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }

@@ -40,7 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
-  const apiUrl = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || 'http://localhost:3001'
+  // Use localhost:3001 directly for now
+  const apiUrl = 'http://localhost:3001'
 
   useEffect(() => {
     checkAuth()
@@ -63,7 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json()
-        setUser(data.data)
+        if (data.success && data.data) {
+          setUser(data.data)
+        }
       } else {
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
@@ -80,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
+      console.log('Attempting login to:', `${apiUrl}/api/auth/login`)
+      
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -88,17 +93,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password })
       })
 
+      console.log('Login response status:', response.status)
+      
       const data = await response.json()
+      console.log('Login response data:', data)
 
       if (!response.ok) {
         throw new Error(data.message || 'Login failed')
       }
 
-      localStorage.setItem('accessToken', data.data.tokens.accessToken)
-      localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
-      setUser(data.data.user)
-      router.push('/dashboard')
+      if (data.success && data.data) {
+        localStorage.setItem('accessToken', data.data.tokens.accessToken)
+        localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
+        setUser(data.data.user)
+        router.push('/dashboard')
+      } else {
+        throw new Error('Invalid response format')
+      }
     } catch (error) {
+      console.error('Login error:', error)
       throw error
     } finally {
       setIsLoading(false)
@@ -108,6 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData) => {
     setIsLoading(true)
     try {
+      console.log('Attempting registration to:', `${apiUrl}/api/auth/register`)
+      console.log('Registration data:', data)
+      
       const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -116,17 +132,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(data)
       })
 
+      console.log('Registration response status:', response.status)
+      
       const result = await response.json()
+      console.log('Registration response data:', result)
 
       if (!response.ok) {
         throw new Error(result.message || 'Registration failed')
       }
 
-      localStorage.setItem('accessToken', result.data.tokens.accessToken)
-      localStorage.setItem('refreshToken', result.data.tokens.refreshToken)
-      setUser(result.data.user)
-      router.push('/dashboard')
+      if (result.success && result.data) {
+        localStorage.setItem('accessToken', result.data.tokens.accessToken)
+        localStorage.setItem('refreshToken', result.data.tokens.refreshToken)
+        setUser(result.data.user)
+        router.push('/dashboard')
+      } else {
+        throw new Error('Invalid response format')
+      }
     } catch (error) {
+      console.error('Registration error:', error)
       throw error
     } finally {
       setIsLoading(false)
@@ -154,8 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Token refresh failed')
       }
 
-      localStorage.setItem('accessToken', data.data.tokens.accessToken)
-      localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
+      if (data.success && data.data) {
+        localStorage.setItem('accessToken', data.data.tokens.accessToken)
+        localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
+      }
     } catch (error) {
       logout()
       throw error
