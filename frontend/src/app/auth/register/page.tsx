@@ -177,28 +177,48 @@ export default function RegisterPage() {
                       <Label htmlFor="firstName" className="text-sm font-semibold text-gray-700">
                         First Name
                       </Label>
-                      <Input
-                        id="firstName"
-                        placeholder="John"
-                        variant="premium"
-                        icon={<User className="w-5 h-5" />}
-                        error={errors.firstName?.message}
-                        {...register('firstName')}
-                      />
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                        <input
+                          id="firstName"
+                          type="text"
+                          placeholder="John"
+                          className="w-full h-12 pl-10 pr-4 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none text-gray-900 placeholder-gray-500"
+                          {...register('firstName')}
+                        />
+                      </div>
+                      {errors.firstName && (
+                        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.firstName.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="lastName" className="text-sm font-semibold text-gray-700">
                         Last Name
                       </Label>
-                      <Input
-                        id="lastName"
-                        placeholder="Doe"
-                        variant="premium"
-                        icon={<User className="w-5 h-5" />}
-                        error={errors.lastName?.message}
-                        {...register('lastName')}
-                      />
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                        <input
+                          id="lastName"
+                          type="text"
+                          placeholder="Doe"
+                          className="w-full h-12 pl-10 pr-4 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none text-gray-900 placeholder-gray-500"
+                          {...register('lastName')}
+                        />
+                      </div>
+                      {errors.lastName && (
+                        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.lastName.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -207,16 +227,33 @@ export default function RegisterPage() {
                     <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
                       Email Address
                     </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@company.com"
-                      variant="premium"
-                      icon={<Mail className="w-5 h-5" />}
-                      success={email && !errors.email}
-                      error={errors.email?.message}
-                      {...register('email')}
-                    />
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                      <input
+                        id="email"
+                        type="email"
+                        placeholder="john@company.com"
+                        className={`w-full h-12 pl-10 pr-4 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none text-gray-900 placeholder-gray-500 ${
+                          email && !errors.email ? 'border-green-300 focus:border-green-400' : ''
+                        } ${errors.email ? 'border-red-300 focus:border-red-400' : ''}`}
+                        {...register('email')}
+                      />
+                      {email && !errors.email && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    {errors.email && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.email.message}
+                      </p>
+                    )}
                   </div>
 
                   {/* Business Information */}
@@ -225,13 +262,16 @@ export default function RegisterPage() {
                       <Label htmlFor="businessName" className="text-sm font-semibold text-gray-700">
                         Business Name <span className="text-gray-400">(Optional)</span>
                       </Label>
-                      <Input
-                        id="businessName"
-                        placeholder="Your Business LLC"
-                        variant="premium"
-                        icon={<Building className="w-5 h-5" />}
-                        {...register('businessName')}
-                      />
+                      <div className="relative">
+                        <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                        <input
+                          id="businessName"
+                          type="text"
+                          placeholder="Your Business LLC"
+                          className="w-full h-12 pl-10 pr-4 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none text-gray-900 placeholder-gray-500"
+                          {...register('businessName')}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -240,12 +280,12 @@ export default function RegisterPage() {
                       </Label>
                       <select
                         id="businessType"
-                        className="w-full h-12 px-4 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none"
+                        className="w-full h-12 px-4 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none text-gray-900"
                         {...register('businessType')}
                       >
-                        <option value="">Select business type</option>
+                        <option value="" className="text-gray-500">Select business type</option>
                         {businessTypes.map(type => (
-                          <option key={type} value={type}>
+                          <option key={type} value={type} className="text-gray-900">
                             {type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
                           </option>
                         ))}
@@ -259,24 +299,23 @@ export default function RegisterPage() {
                       <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
                         Password
                       </Label>
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Create a strong password"
-                        variant="premium"
-                        icon={<Lock className="w-5 h-5" />}
-                        rightIcon={
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
-                          >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        }
-                        error={errors.password?.message}
-                        {...register('password')}
-                      />
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                        <input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="Create a strong password"
+                          className="w-full h-12 pl-10 pr-12 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none text-gray-900 placeholder-gray-500"
+                          {...register('password')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors z-10"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
                       
                       {/* Password Strength Indicator */}
                       {password && (
@@ -298,30 +337,46 @@ export default function RegisterPage() {
                           </p>
                         </div>
                       )}
+                      
+                      {errors.password && (
+                        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.password.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
                         Confirm Password
                       </Label>
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        placeholder="Confirm your password"
-                        variant="premium"
-                        icon={<Lock className="w-5 h-5" />}
-                        rightIcon={
-                          <button
-                            type="button"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
-                          >
-                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        }
-                        error={errors.confirmPassword?.message}
-                        {...register('confirmPassword')}
-                      />
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                        <input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          placeholder="Confirm your password"
+                          className="w-full h-12 pl-10 pr-12 py-3 rounded-xl border-2 border-transparent bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm transition-all duration-300 focus:from-white/80 focus:to-white/60 focus:shadow-xl focus:shadow-purple-200/30 focus:border-purple-300 focus:outline-none text-gray-900 placeholder-gray-500"
+                          {...register('confirmPassword')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors z-10"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      {errors.confirmPassword && (
+                        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.confirmPassword.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -331,7 +386,7 @@ export default function RegisterPage() {
                       <input
                         id="agreeToTerms"
                         type="checkbox"
-                        className="premium-checkbox mt-0.5"
+                        className="w-5 h-5 rounded border-2 border-gray-300 transition-all duration-200 bg-gradient-to-br from-white to-gray-50 checked:border-purple-500 checked:bg-gradient-to-br checked:from-purple-500 checked:to-purple-600 focus:ring-2 focus:ring-purple-200 focus:outline-none mt-0.5"
                         {...register('agreeToTerms')}
                       />
                       <label htmlFor="agreeToTerms" className="text-sm text-gray-700 leading-relaxed">
@@ -346,7 +401,12 @@ export default function RegisterPage() {
                       </label>
                     </div>
                     {errors.agreeToTerms && (
-                      <p className="text-sm text-red-600">{errors.agreeToTerms.message}</p>
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.agreeToTerms.message}
+                      </p>
                     )}
                   </div>
 
@@ -356,11 +416,15 @@ export default function RegisterPage() {
                     disabled={isSubmitting || isLoading}
                     variant="premium"
                     size="lg"
-                    className="w-full"
+                    className="w-full group"
                     loading={isSubmitting || isLoading}
-                    rightIcon={!isSubmitting && !isLoading ? <ArrowRight className="w-5 h-5" /> : undefined}
                   >
-                    {isSubmitting || isLoading ? 'Creating Account...' : 'Create Account'}
+                    <span className="flex items-center justify-center gap-2">
+                      {isSubmitting || isLoading ? 'Creating Account...' : 'Create Account'}
+                      {!isSubmitting && !isLoading && (
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      )}
+                    </span>
                   </Button>
                 </form>
               </CardContent>
