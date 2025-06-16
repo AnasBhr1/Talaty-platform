@@ -1,4 +1,3 @@
-// frontend/src/components/dashboard/DashboardLayout.tsx
 'use client'
 
 import { useState } from 'react'
