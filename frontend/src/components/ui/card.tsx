@@ -1,42 +1,47 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { cva, type VariantProps } from "class-variance-authority"
+
+const cardVariants = cva(
+  "rounded-xl border bg-card text-card-foreground",
+  {
+    variants: {
+      variant: {
+        default: "shadow-soft",
+        elevated: "shadow-soft-lg",
+        interactive: "shadow-soft hover:shadow-soft-lg hover:scale-[1.01] transition-all duration-200 cursor-pointer",
+        glass: "glass",
+        primary: "surface-primary",
+        secondary: "surface-secondary",
+        success: "surface-success",
+        warning: "surface-warning",
+        destructive: "surface-destructive",
+        gradient: "bg-gradient-to-br from-primary-50 to-secondary-50 border-primary-200",
+      },
+      padding: {
+        none: "",
+        default: "p-6",
+        sm: "p-4",
+        lg: "p-8",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      padding: "default",
+    },
+  }
+)
 
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
-    variant?: "default" | "glass" | "gradient" | "premium" | "minimal"
-    hoverable?: boolean
-    glowing?: boolean
-  }
->(({ className, variant = "default", hoverable = false, glowing = false, ...props }, ref) => {
-  const variants = {
-    default: "premium-card",
-    glass: "glass-effect rounded-2xl shadow-xl",
-    gradient: "bg-gradient-to-br from-white via-purple-50 to-blue-50 rounded-2xl shadow-2xl border-0",
-    premium: "premium-card bg-gradient-to-br from-white/90 via-white/80 to-white/70",
-    minimal: "bg-white/80 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg"
-  }
-  
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        variants[variant],
-        hoverable && "transform transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer",
-        glowing && "pulse-glow",
-        "relative overflow-hidden",
-        className
-      )}
-      {...props}
-    >
-      {/* Gradient overlay for premium effect */}
-      {variant === "premium" && (
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-teal-500/5 pointer-events-none" />
-      )}
-      {props.children}
-    </div>
-  )
-})
+  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof cardVariants>
+>(({ className, variant, padding, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(cardVariants({ variant, padding }), className)}
+    {...props}
+  />
+))
 Card.displayName = "Card"
 
 const CardHeader = React.forwardRef<
@@ -49,7 +54,7 @@ const CardHeader = React.forwardRef<
     ref={ref}
     className={cn(
       "flex flex-col space-y-1.5 p-6",
-      gradient && "bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-2xl",
+      gradient && "bg-gradient-to-r from-primary-50 to-secondary-50 rounded-t-xl border-b border-border",
       className
     )}
     {...props}
@@ -61,12 +66,12 @@ const CardTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement> & {
     gradient?: boolean
-    size?: "sm" | "md" | "lg" | "xl"
+    size?: "sm" | "default" | "lg" | "xl"
   }
->(({ className, gradient = false, size = "md", ...props }, ref) => {
-  const sizes = {
+>(({ className, gradient = false, size = "default", ...props }, ref) => {
+  const sizeClasses = {
     sm: "text-lg",
-    md: "text-2xl",
+    default: "text-2xl",
     lg: "text-3xl",
     xl: "text-4xl"
   }
@@ -75,9 +80,9 @@ const CardTitle = React.forwardRef<
     <h3
       ref={ref}
       className={cn(
-        "font-bold leading-none tracking-tight",
-        sizes[size],
-        gradient && "gradient-text",
+        "font-semibold leading-none tracking-tight",
+        sizeClasses[size],
+        gradient && "text-gradient",
         className
       )}
       {...props}
@@ -88,17 +93,11 @@ CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement> & {
-    muted?: boolean
-  }
->(({ className, muted = true, ...props }, ref) => (
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn(
-      "text-sm leading-relaxed",
-      muted ? "text-muted-foreground" : "text-gray-600",
-      className
-    )}
+    className={cn("text-sm text-muted-foreground leading-relaxed", className)}
     {...props}
   />
 ))
@@ -107,20 +106,20 @@ CardDescription.displayName = "CardDescription"
 const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
-    padding?: "none" | "sm" | "md" | "lg"
+    padding?: "none" | "sm" | "default" | "lg"
   }
->(({ className, padding = "md", ...props }, ref) => {
-  const paddings = {
+>(({ className, padding = "default", ...props }, ref) => {
+  const paddingClasses = {
     none: "p-0",
-    sm: "p-4",
-    md: "p-6 pt-0",
+    sm: "p-4 pt-0",
+    default: "p-6 pt-0",
     lg: "p-8 pt-0"
   }
   
   return (
     <div 
       ref={ref} 
-      className={cn(paddings[padding], className)} 
+      className={cn(paddingClasses[padding], className)} 
       {...props} 
     />
   )
@@ -137,7 +136,7 @@ const CardFooter = React.forwardRef<
     ref={ref}
     className={cn(
       "flex items-center p-6 pt-0",
-      gradient && "bg-gradient-to-r from-gray-50 to-purple-50 rounded-b-2xl mt-4 pt-4",
+      gradient && "bg-gradient-to-r from-muted/50 to-muted/30 rounded-b-xl mt-4 pt-4 border-t border-border",
       className
     )}
     {...props}
@@ -145,4 +144,12 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+export { 
+  Card, 
+  CardHeader, 
+  CardFooter, 
+  CardTitle, 
+  CardDescription, 
+  CardContent,
+  cardVariants 
+}
