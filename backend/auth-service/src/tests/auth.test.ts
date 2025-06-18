@@ -1,5 +1,3 @@
-// backend/auth-service/src/tests/auth.test.ts
-
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import app from '../index';
