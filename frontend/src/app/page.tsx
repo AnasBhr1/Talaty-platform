@@ -400,13 +400,17 @@ export default function CompletePage() {
 
             <div className="flex items-center space-x-4">
               <div className="hidden lg:flex items-center space-x-4">
-                <Button variant="ghost" size="sm">
-                  Sign In
-                </Button>
-                <Button variant="premium" size="sm">
-                  Start Free Trial
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+                <Link href="/auth/login">
+                  <Button variant="ghost" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/auth/register">
+                  <Button variant="premium" size="sm">
+                    Start Free Trial
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
               </div>
 
               {/* Mobile menu button */}
@@ -443,8 +447,12 @@ export default function CompletePage() {
                   </a>
                 ))}
                 <div className="pt-4 space-y-2">
-                  <Button variant="outline" className="w-full">Sign In</Button>
-                  <Button variant="premium" className="w-full">Start Free Trial</Button>
+                  <Link href="/auth/login">
+                    <Button variant="outline" className="w-full">Sign In</Button>
+                  </Link>
+                  <Link href="/auth/register">
+                    <Button variant="premium" className="w-full">Start Free Trial</Button>
+                  </Link>
                 </div>
               </div>
             </motion.div>
@@ -524,14 +532,16 @@ export default function CompletePage() {
               transition={{ delay: 0.7, duration: 0.8 }}
               className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16"
             >
-              <Button 
-                variant="premium" 
-                size="xl" 
-                className="group shadow-primary-lg hover:shadow-primary"
-              >
-                <span className="relative z-10">Start Free Enterprise Trial</span>
-                <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform relative z-10" />
-              </Button>
+              <Link href="/auth/register">
+                <Button 
+                  variant="premium" 
+                  size="xl" 
+                  className="group shadow-primary-lg hover:shadow-primary"
+                >
+                  <span className="relative z-10">Start Free Enterprise Trial</span>
+                  <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform relative z-10" />
+                </Button>
+              </Link>
               
               <Button 
                 variant="glass" 
@@ -621,7 +631,7 @@ export default function CompletePage() {
 
       {/* Platform Section */}
       <section id="platform" className="section-padding bg-white">
-        <div className="container-wide">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <motion.h2 
               className="text-4xl lg:text-5xl font-bold text-gradient mb-6"
@@ -653,7 +663,7 @@ export default function CompletePage() {
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card variant="elevated" className="h-full group hover:shadow-soft-xl transition-all duration-300">
+                <Card className="h-full group hover:shadow-xl transition-all duration-300 border border-gray-200 shadow-lg">
                   <CardContent className="p-8">
                     <div className="flex items-start space-x-6">
                       <div className={`w-16 h-16 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
@@ -661,10 +671,10 @@ export default function CompletePage() {
                       </div>
                       <div className="flex-1">
                         <h3 className="text-2xl font-bold text-neutral-900 mb-3">{feature.title}</h3>
-                        <p className="text-muted-foreground leading-relaxed mb-4">{feature.description}</p>
+                        <p className="text-gray-600 leading-relaxed mb-4">{feature.description}</p>
                         <div className="flex items-center gap-2">
-                          <Badge className="badge-primary">{feature.stats}</Badge>
-                          <Button variant="ghost" size="sm" className="text-primary-600 hover:text-primary-700">
+                          <Badge className="bg-blue-100 text-blue-800 text-xs">{feature.stats}</Badge>
+                          <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700">
                             Learn more <ArrowRight className="w-4 h-4 ml-1" />
                           </Button>
                         </div>
@@ -679,8 +689,8 @@ export default function CompletePage() {
       </section>
 
       {/* Solutions Section */}
-      <section id="solutions" className="section-padding bg-gradient-to-br from-neutral-50 to-white">
-        <div className="container-wide">
+      <section id="solutions" className="py-20 bg-gradient-to-br from-neutral-50 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <motion.h2 
               className="text-4xl lg:text-5xl font-bold text-gradient mb-6"
@@ -692,7 +702,7 @@ export default function CompletePage() {
               Industry Solutions
             </motion.h2>
             <motion.p 
-              className="text-xl text-muted-foreground max-w-3xl mx-auto"
+              className="text-xl text-gray-600 max-w-3xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -712,30 +722,30 @@ export default function CompletePage() {
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card variant="interactive" className="h-full group">
+                <Card className="h-full group hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-200">
                   <CardContent className="p-8">
                     <div className="flex items-start justify-between mb-6">
                       <div className={`w-14 h-14 bg-gradient-to-br ${solution.color} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                         <solution.icon className="w-7 h-7 text-white" />
                       </div>
                       {solution.badge && (
-                        <Badge className="badge-primary">{solution.badge}</Badge>
+                        <Badge className="bg-blue-100 text-blue-800 text-xs">{solution.badge}</Badge>
                       )}
                     </div>
                     
                     <h3 className="text-2xl font-bold text-neutral-900 mb-3">{solution.title}</h3>
-                    <p className="text-muted-foreground leading-relaxed mb-6">{solution.description}</p>
+                    <p className="text-gray-600 leading-relaxed mb-6">{solution.description}</p>
                     
                     <div className="space-y-3 mb-6">
                       {solution.features.map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-3">
-                          <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0" />
+                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                           <span className="text-sm text-neutral-700">{feature}</span>
                         </div>
                       ))}
                     </div>
                     
-                    <Button variant="outline" className="w-full group-hover:bg-primary-50 group-hover:border-primary-300 transition-colors">
+                    <Button variant="outline" className="w-full group-hover:bg-purple-50 group-hover:border-purple-300 transition-colors">
                       Learn More <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </CardContent>
@@ -747,8 +757,8 @@ export default function CompletePage() {
       </section>
 
       {/* Enterprise Section */}
-      <section id="enterprise" className="section-padding bg-white">
-        <div className="container-wide">
+      <section id="enterprise" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <motion.h2 
               className="text-4xl lg:text-5xl font-bold text-gradient mb-6"
@@ -760,7 +770,7 @@ export default function CompletePage() {
               Enterprise Solutions
             </motion.h2>
             <motion.p 
-              className="text-xl text-muted-foreground max-w-3xl mx-auto"
+              className="text-xl text-gray-600 max-w-3xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -780,19 +790,19 @@ export default function CompletePage() {
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card variant="elevated" className="h-full group hover:shadow-soft-xl transition-all duration-300">
+                <Card className="h-full group hover:shadow-xl transition-all duration-300 border border-gray-200">
                   <CardContent className="p-8">
                     <div className="flex items-start space-x-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                         <feature.icon className="w-7 h-7 text-white" />
                       </div>
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-neutral-900 mb-3">{feature.title}</h3>
-                        <p className="text-muted-foreground mb-4">{feature.description}</p>
+                        <p className="text-gray-600 mb-4">{feature.description}</p>
                         <div className="space-y-2">
                           {feature.features.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full"></div>
+                              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
                               <span className="text-sm text-neutral-600">{item}</span>
                             </div>
                           ))}
@@ -812,13 +822,13 @@ export default function CompletePage() {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <Card variant="gradient" className="text-center">
+            <Card className="text-center bg-gradient-to-r from-purple-50 via-blue-50 to-teal-50 border-purple-200">
               <CardContent className="p-12">
-                <Crown className="w-16 h-16 mx-auto mb-6 text-primary-600" />
+                <Crown className="w-16 h-16 mx-auto mb-6 text-purple-600" />
                 <h3 className="text-3xl font-bold text-neutral-900 mb-4">
                   Ready for Enterprise?
                 </h3>
-                <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+                <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
                   Get dedicated support, custom integrations, and enterprise-grade 
                   security for your organization's specific needs.
                 </p>
@@ -838,8 +848,8 @@ export default function CompletePage() {
       </section>
 
       {/* Resources Section */}
-      <section id="resources" className="section-padding bg-gradient-to-br from-neutral-50 to-white">
-        <div className="container-wide">
+      <section id="resources" className="py-20 bg-gradient-to-br from-neutral-50 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <motion.h2 
               className="text-4xl lg:text-5xl font-bold text-gradient mb-6"
@@ -851,7 +861,7 @@ export default function CompletePage() {
               Resources & Support
             </motion.h2>
             <motion.p 
-              className="text-xl text-muted-foreground max-w-3xl mx-auto"
+              className="text-xl text-gray-600 max-w-3xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -871,14 +881,14 @@ export default function CompletePage() {
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card variant="interactive" className="h-full group">
+                <Card className="h-full group hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-200">
                   <CardContent className="p-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-100 to-secondary-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <resource.icon className="w-6 h-6 text-primary-600" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <resource.icon className="w-6 h-6 text-purple-600" />
                     </div>
                     <h3 className="text-lg font-semibold text-neutral-900 mb-3">{resource.title}</h3>
-                    <p className="text-muted-foreground mb-4">{resource.description}</p>
-                    <Button variant="ghost" size="sm" className="text-primary-600 hover:text-primary-700 p-0">
+                    <p className="text-gray-600 mb-4">{resource.description}</p>
+                    <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700 p-0">
                       Access Resource <ExternalLink className="w-4 h-4 ml-1" />
                     </Button>
                   </CardContent>
@@ -890,8 +900,8 @@ export default function CompletePage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="section-padding bg-white">
-        <div className="container-wide">
+      <section id="pricing" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <motion.h2 
               className="text-4xl lg:text-5xl font-bold text-gradient mb-6"
@@ -903,7 +913,7 @@ export default function CompletePage() {
               Simple, Transparent Pricing
             </motion.h2>
             <motion.p 
-              className="text-xl text-muted-foreground max-w-3xl mx-auto"
+              className="text-xl text-gray-600 max-w-3xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -924,12 +934,11 @@ export default function CompletePage() {
                 viewport={{ once: true }}
               >
                 <Card 
-                  variant={plan.popular ? "gradient" : "elevated"} 
-                  className={`h-full relative ${plan.popular ? 'ring-2 ring-primary-500 ring-offset-4' : ''}`}
+                  className={`h-full relative border border-gray-200 ${plan.popular ? 'ring-2 ring-purple-500 ring-offset-4 shadow-xl' : 'shadow-lg'}`}
                 >
                   {plan.popular && (
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white px-6 py-1">
+                      <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 py-1">
                         {plan.badge}
                       </Badge>
                     </div>
@@ -938,29 +947,29 @@ export default function CompletePage() {
                   <CardContent className="p-8">
                     <div className="text-center mb-8">
                       <h3 className="text-2xl font-bold text-neutral-900 mb-2">{plan.name}</h3>
-                      <p className="text-muted-foreground mb-4">{plan.description}</p>
+                      <p className="text-gray-600 mb-4">{plan.description}</p>
                       
                       <div className="flex items-baseline justify-center gap-2 mb-2">
                         {plan.originalPrice && (
-                          <span className="text-lg text-muted-foreground line-through">
+                          <span className="text-lg text-gray-500 line-through">
                             {plan.originalPrice}
                           </span>
                         )}
                         <span className="text-4xl font-bold text-neutral-900">{plan.price}</span>
                         {plan.period && (
-                          <span className="text-muted-foreground">{plan.period}</span>
+                          <span className="text-gray-600">{plan.period}</span>
                         )}
                       </div>
                       
                       {!plan.popular && plan.badge && (
-                        <Badge className="badge-secondary">{plan.badge}</Badge>
+                        <Badge className="bg-gray-100 text-gray-700 text-xs">{plan.badge}</Badge>
                       )}
                     </div>
 
                     <div className="space-y-4 mb-8">
                       {plan.features.map((feature, idx) => (
                         <div key={idx} className="flex items-start gap-3">
-                          <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
+                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                           <span className="text-sm text-neutral-700">{feature}</span>
                         </div>
                       ))}
@@ -1000,18 +1009,18 @@ export default function CompletePage() {
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <Card variant="elevated">
+                  <Card className="border border-gray-200 shadow-sm">
                     <CardContent className="p-0">
                       <button
                         onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                        className="w-full p-6 text-left flex items-center justify-between hover:bg-neutral-50 transition-colors"
+                        className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
                       >
                         <span className="font-semibold text-neutral-900">{faq.question}</span>
                         <motion.div
                           animate={{ rotate: openFaq === index ? 180 : 0 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                          <ChevronDown className="w-5 h-5 text-gray-600" />
                         </motion.div>
                       </button>
                       
@@ -1024,7 +1033,7 @@ export default function CompletePage() {
                             transition={{ duration: 0.3 }}
                             className="overflow-hidden"
                           >
-                            <div className="p-6 pt-0 text-muted-foreground">
+                            <div className="p-6 pt-0 text-gray-600">
                               {faq.answer}
                             </div>
                           </motion.div>
@@ -1061,10 +1070,12 @@ export default function CompletePage() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-              <Button variant="glass" size="xl" className="bg-white/20 hover:bg-white/30 border-white/30">
-                Start Free Trial
-                <ArrowRight className="w-6 h-6 ml-3" />
-              </Button>
+              <Link href="/auth/register">
+                <Button variant="glass" size="xl" className="bg-white/20 hover:bg-white/30 border-white/30">
+                  Start Free Trial
+                  <ArrowRight className="w-6 h-6 ml-3" />
+                </Button>
+              </Link>
               <Button variant="outline" size="xl" className="border-white/50 text-white hover:bg-white/10">
                 Book a Demo
               </Button>
@@ -1145,7 +1156,7 @@ export default function CompletePage() {
 
           <div className="border-t border-neutral-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
             <div className="text-sm text-neutral-400">
-              © 2024 Talaty. All rights reserved.
+              © 2025 Talaty. All rights reserved.
             </div>
             <div className="flex space-x-6 text-sm text-neutral-400 mt-4 md:mt-0">
               <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>

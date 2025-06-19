@@ -35,21 +35,70 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number = 7) => {
+  const expires = new Date()
+  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000))
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict;Secure=${window.location.protocol === 'https:'}`
+}
+
+const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null
+  const nameEQ = name + "="
+  const ca = document.cookie.split(';')
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i]
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length)
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length)
+  }
+  return null
+}
+
+const deleteCookie = (name: string) => {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
-  // Use localhost:3001 directly for now
-  const apiUrl = 'http://localhost:3001'
+  // Use environment variable or fallback to localhost
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
   useEffect(() => {
     checkAuth()
   }, [])
 
+  const getStoredToken = (): string | null => {
+    // Try to get token from cookies first, then localStorage as fallback
+    return getCookie('accessToken') || (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null)
+  }
+
+  const storeTokens = (accessToken: string, refreshToken: string) => {
+    // Store in both cookies and localStorage for compatibility
+    setCookie('accessToken', accessToken, 7)
+    setCookie('refreshToken', refreshToken, 30)
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accessToken', accessToken)
+      localStorage.setItem('refreshToken', refreshToken)
+    }
+  }
+
+  const clearTokens = () => {
+    deleteCookie('accessToken')
+    deleteCookie('refreshToken')
+    
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+    }
+  }
+
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = getStoredToken()
       if (!token) {
         setIsLoading(false)
         return
@@ -67,16 +116,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.success && data.data) {
           setUser(data.data)
         }
+      } else if (response.status === 401) {
+        // Token is invalid, try to refresh
+        await attemptTokenRefresh()
       } else {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
+        clearTokens()
       }
     } catch (error) {
       console.error('Auth check failed:', error)
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
+      clearTokens()
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const attemptTokenRefresh = async () => {
+    try {
+      const refreshToken = getCookie('refreshToken') || (typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null)
+      if (!refreshToken) {
+        throw new Error('No refresh token')
+      }
+
+      const response = await fetch(`${apiUrl}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ refreshToken })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed')
+      }
+
+      if (data.success && data.data) {
+        storeTokens(data.data.tokens.accessToken, data.data.tokens.refreshToken)
+        // Try to get user info again
+        await checkAuth()
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error)
+      clearTokens()
     }
   }
 
@@ -103,10 +185,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.success && data.data) {
-        localStorage.setItem('accessToken', data.data.tokens.accessToken)
-        localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
+        storeTokens(data.data.tokens.accessToken, data.data.tokens.refreshToken)
         setUser(data.data.user)
-        router.push('/dashboard')
+        
+        // Get the callback URL from query params or default to dashboard
+        const urlParams = new URLSearchParams(window.location.search)
+        const callbackUrl = urlParams.get('callbackUrl') || '/dashboard'
+        
+        router.push(callbackUrl)
       } else {
         throw new Error('Invalid response format')
       }
@@ -142,8 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (result.success && result.data) {
-        localStorage.setItem('accessToken', result.data.tokens.accessToken)
-        localStorage.setItem('refreshToken', result.data.tokens.refreshToken)
+        storeTokens(result.data.tokens.accessToken, result.data.tokens.refreshToken)
         setUser(result.data.user)
         router.push('/dashboard')
       } else {
@@ -157,40 +242,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const refreshToken = async () => {
-    try {
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (!refreshToken) {
-        throw new Error('No refresh token')
-      }
-
-      const response = await fetch(`${apiUrl}/api/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ refreshToken })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error('Token refresh failed')
-      }
-
-      if (data.success && data.data) {
-        localStorage.setItem('accessToken', data.data.tokens.accessToken)
-        localStorage.setItem('refreshToken', data.data.tokens.refreshToken)
-      }
-    } catch (error) {
-      logout()
-      throw error
-    }
+  const refreshTokens = async () => {
+    await attemptTokenRefresh()
   }
 
   const logout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
+    clearTokens()
     setUser(null)
     router.push('/auth/login')
   }
@@ -202,7 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       register,
-      refreshToken
+      refreshToken: refreshTokens
     }}>
       {children}
     </AuthContext.Provider>
