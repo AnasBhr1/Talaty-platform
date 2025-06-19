@@ -96,6 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Helper function to validate response is JSON
+  const validateJsonResponse = async (response: Response) => {
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text()
+      console.error('Expected JSON but received:', text.substring(0, 200))
+      throw new Error('Server returned non-JSON response. Please check if the API server is running.')
+    }
+    return response.json()
+  }
+
   const checkAuth = async () => {
     try {
       const token = getStoredToken()
@@ -112,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await validateJsonResponse(response)
         if (data.success && data.data) {
           setUser(data.data)
         }
@@ -145,11 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ refreshToken })
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
         throw new Error('Token refresh failed')
       }
+
+      const data = await validateJsonResponse(response)
 
       if (data.success && data.data) {
         storeTokens(data.data.tokens.accessToken, data.data.tokens.refreshToken)
@@ -177,12 +188,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Login response status:', response.status)
       
-      const data = await response.json()
-      console.log('Login response data:', data)
-
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed')
+        if (response.status >= 500) {
+          throw new Error('Server error. Please check if the API server is running.')
+        }
+        // Try to parse error response
+        try {
+          const errorData = await validateJsonResponse(response)
+          throw new Error(errorData.message || 'Login failed')
+        } catch (parseError) {
+          throw new Error(`Login failed with status ${response.status}`)
+        }
       }
+
+      const data = await validateJsonResponse(response)
+      console.log('Login response data:', data)
 
       if (data.success && data.data) {
         storeTokens(data.data.tokens.accessToken, data.data.tokens.refreshToken)
@@ -210,6 +230,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Attempting registration to:', `${apiUrl}/api/auth/register`)
       console.log('Registration data:', data)
       
+      // First, let's check if the server is accessible
+      try {
+        const healthCheck = await fetch(`${apiUrl}/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!healthCheck.ok) {
+          throw new Error('API server is not responding. Please ensure the backend server is running on port 3001.')
+        }
+      } catch (healthError) {
+        console.error('Health check failed:', healthError)
+        throw new Error('Cannot connect to API server. Please ensure the backend server is running on http://localhost:3001')
+      }
+      
       const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -219,13 +256,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       console.log('Registration response status:', response.status)
+      console.log('Registration response headers:', response.headers.get('content-type'))
       
-      const result = await response.json()
-      console.log('Registration response data:', result)
-
       if (!response.ok) {
-        throw new Error(result.message || 'Registration failed')
+        if (response.status >= 500) {
+          throw new Error('Server error. Please check if the API server is running properly.')
+        }
+        // Try to parse error response
+        try {
+          const errorData = await validateJsonResponse(response)
+          throw new Error(errorData.message || 'Registration failed')
+        } catch (parseError) {
+          const responseText = await response.text()
+          console.error('Non-JSON response received:', responseText.substring(0, 200))
+          throw new Error(`Registration failed. Server returned: ${response.status} ${response.statusText}`)
+        }
       }
+
+      const result = await validateJsonResponse(response)
+      console.log('Registration response data:', result)
 
       if (result.success && result.data) {
         storeTokens(result.data.tokens.accessToken, result.data.tokens.refreshToken)
