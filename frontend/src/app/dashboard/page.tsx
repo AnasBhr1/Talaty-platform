@@ -144,32 +144,60 @@ interface StatsCardProps {
   title: string
   value: string
   icon: any
-  gradient: string
   trend?: string
   trendUp?: boolean
+  subtitle?: string
+  color?: string
 }
 
-function StatsCard({ title, value, icon: Icon, gradient, trend, trendUp }: StatsCardProps) {
+// Modern Clean Stats Card Component
+function StatsCard({ title, value, icon: Icon, trend, trendUp, subtitle, color = "blue" }: StatsCardProps) {
+  const colorClasses = {
+    blue: "border-blue-100 bg-blue-50",
+    green: "border-emerald-100 bg-emerald-50", 
+    purple: "border-purple-100 bg-purple-50",
+    orange: "border-orange-100 bg-orange-50",
+    red: "border-red-100 bg-red-50",
+    teal: "border-teal-100 bg-teal-50"
+  }
+
+  const iconColors = {
+    blue: "text-blue-600",
+    green: "text-emerald-600",
+    purple: "text-purple-600", 
+    orange: "text-orange-600",
+    red: "text-red-600",
+    teal: "text-teal-600"
+  }
+
   return (
-    <Card variant="premium" hoverable className="group">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600 mb-2">{title}</p>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
-            {trend && (
-              <div className={`flex items-center text-sm ${trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                {trendUp ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                {trend}
-              </div>
+    <div className="bg-white p-6 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-200 group">
+      <div className="flex items-start justify-between">
+        {/* Content */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <div className="space-y-1">
+            <p className="text-3xl font-bold text-gray-900">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-gray-500">{subtitle}</p>
             )}
           </div>
-          <div className={`w-16 h-16 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-            <Icon className="w-8 h-8 text-white" />
-          </div>
+          {trend && (
+            <div className={`inline-flex items-center text-sm ${
+              trendUp ? 'text-emerald-600' : 'text-red-600'
+            }`}>
+              <span className="mr-1">{trendUp ? '↗' : '↘'}</span>
+              {trend}
+            </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Simple Icon */}
+        <div className={`w-12 h-12 rounded-xl ${colorClasses[color as keyof typeof colorClasses]} flex items-center justify-center group-hover:scale-105 transition-transform duration-200`}>
+          <Icon className={`w-6 h-6 ${iconColors[color as keyof typeof iconColors]}`} />
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -316,6 +344,57 @@ export default function DashboardPage() {
     )
   }
 
+  const statsData = [
+    {
+      title: "Verification Score",
+      value: mockStats.currentScore.toString(),
+      icon: TrendingUp,
+      trend: "+50 points",
+      trendUp: true,
+      subtitle: `out of ${mockStats.maxScore}`,
+      color: "blue"
+    },
+    {
+      title: "Documents",
+      value: `${mockStats.verifiedDocuments}/${mockStats.totalDocuments}`,
+      icon: FileText,
+      trend: "+2 this week",
+      trendUp: true,
+      subtitle: "verified",
+      color: "green"
+    },
+    {
+      title: "Completion Rate", 
+      value: `${mockStats.completionPercentage}%`,
+      icon: Target,
+      trend: "+15%",
+      trendUp: true,
+      color: "purple"
+    },
+    {
+      title: "Success Rate",
+      value: `${mockStats.successRate}%`,
+      icon: Award,
+      trend: "+2.4%", 
+      trendUp: true,
+      color: "orange"
+    },
+    {
+      title: "Monthly Growth",
+      value: `${mockStats.monthlyGrowth}%`,
+      icon: Activity,
+      trend: "+5.7%",
+      trendUp: true,
+      color: "teal"
+    },
+    {
+      title: "Active Status",
+      value: user?.eKycStatus || 'PENDING',
+      icon: Shield,
+      color: user?.eKycStatus === 'VERIFIED' ? "green" : "red"
+    }
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Mobile Sidebar */}
@@ -447,59 +526,25 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* Stats Overview */}
+          {/* Stats Overview - Updated with Clean Design */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6"
           >
-            <StatsCard
-              title="Verification Score"
-              value={mockStats.currentScore.toString()}
-              icon={TrendingUp}
-              gradient="from-blue-500 to-purple-600"
-              trend="+50 points"
-              trendUp={true}
-            />
-            <StatsCard
-              title="Documents"
-              value={`${mockStats.verifiedDocuments}/${mockStats.totalDocuments}`}
-              icon={FileText}
-              gradient="from-green-500 to-teal-600"
-              trend="+2 this week"
-              trendUp={true}
-            />
-            <StatsCard
-              title="Completion Rate"
-              value={`${mockStats.completionPercentage}%`}
-              icon={Target}
-              gradient="from-purple-500 to-pink-600"
-              trend="+15%"
-              trendUp={true}
-            />
-            <StatsCard
-              title="Success Rate"
-              value={`${mockStats.successRate}%`}
-              icon={Award}
-              gradient="from-yellow-500 to-orange-600"
-              trend="+2.4%"
-              trendUp={true}
-            />
-            <StatsCard
-              title="Monthly Growth"
-              value={`${mockStats.monthlyGrowth}%`}
-              icon={Activity}
-              gradient="from-teal-500 to-cyan-600"
-              trend="+5.7%"
-              trendUp={true}
-            />
-            <StatsCard
-              title="Active Status"
-              value={user?.eKycStatus || 'In Progress'}
-              icon={Shield}
-              gradient="from-indigo-500 to-blue-600"
-            />
+            {statsData.map((stat, index) => (
+              <StatsCard
+                key={stat.title}
+                title={stat.title}
+                value={stat.value}
+                icon={stat.icon}
+                trend={stat.trend}
+                trendUp={stat.trendUp}
+                subtitle={stat.subtitle}
+                color={stat.color}
+              />
+            ))}
           </motion.div>
 
           {/* Quick Actions */}
@@ -527,8 +572,7 @@ export default function DashboardPage() {
                       <Link href={action.href}>
                         <Card 
                           variant="minimal" 
-                          hoverable 
-                          className="h-full group cursor-pointer border-2 hover:border-purple-200"
+                          className="h-full group cursor-pointer border-2 hover:border-purple-200 hover:shadow-lg transition-all duration-300"
                         >
                           <CardContent className="p-4 text-center">
                             <div className={`w-12 h-12 bg-gradient-to-br ${action.gradient} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
