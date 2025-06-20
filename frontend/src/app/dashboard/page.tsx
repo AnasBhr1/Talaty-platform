@@ -136,7 +136,7 @@ const sidebarItems = [
   { name: 'Profile', href: '/dashboard/profile', icon: User, current: false },
   { name: 'Documents', href: '/dashboard/documents', icon: FileStack, current: false },
   { name: 'Scoring', href: '/dashboard/scoring', icon: BarChart, current: false },
-  { name: 'Settings', href: '/settings', icon: Cog, current: false },
+  { name: 'Settings', href: '/dashboard/settings', icon: Cog, current: false },
   { name: 'Support', href: '/support', icon: HelpCircle, current: false },
 ]
 
